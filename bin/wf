@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Run a command inside the project container with the project venv active.
+# Usage: wf python train.py ... | wf pip install X | wf pytest | wf bash
+set -euo pipefail
+W=/srv/sfsu_srv/wf-spread
+SIF=/srv/sfsu_srv/containers/pytorch-26.09.sif
+exec apptainer exec --nv --bind /srv/sfsu_srv --pwd "$PWD" \
+  --env "VIRTUAL_ENV=$W/.venv,PIP_CONSTRAINT=$W/env/constraints.txt,PIP_CACHE_DIR=$W/.cache/pip,HF_HOME=$W/.cache/hf,WANDB_DIR=$W/runs,PYTHONPATH=$W/src" \
+  "$SIF" bash -c 'export PATH="$VIRTUAL_ENV/bin:$PATH"; exec "$@"' wf "${@:-bash}"

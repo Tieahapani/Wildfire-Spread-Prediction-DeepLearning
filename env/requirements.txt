@@ -1,0 +1,13 @@
+# Project packages on top of the NGC PyTorch 26.09 container.
+# Always install with `wf pip install -r env/requirements.txt` (constraints pin the container's torch/numpy).
+lightning
+torchmetrics
+peft
+segmentation-models-pytorch
+timm
+optuna
+scikit-learn
+captum
+tfrecord
+h5py
+pytest
