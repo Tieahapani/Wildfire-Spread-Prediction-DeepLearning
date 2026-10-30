@@ -1,0 +1,52 @@
+[project]
+name = "wfspread"
+version = "0.1.0"
+description = "Fine-tuning the Galileo foundation model for next-day wildfire spread prediction (NDWS)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+extend-exclude = ["third_party", "notebooks"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # import sorting
+    "N",        # pep8 naming
+    "B",        # bugbear
+    "UP",       # pyupgrade
+    "SIM",      # simplify
+    "NPY",      # numpy
+    "PT",       # pytest style
+    "D",        # docstrings
+    "RUF",
+]
+# D105/D107: magic methods and __init__ are documented on the class.
+# RUF001-003: units and math symbols (×, °, −) are intentional in strings and comments.
+ignore = ["D105", "D107", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Test names say what they check; docstrings there are optional.
+"tests/**" = ["D"]
+"**/__init__.py" = ["D104"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers -m 'not slow'"
+markers = [
+    "gpu: needs a CUDA device",
+    "data: needs the datasets under WF_DATA",
+    "slow: takes more than 30 s; run with -m slow",
+]
