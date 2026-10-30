@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # Run a command inside the project container with the project venv active.
-# Usage: wf python train.py ... | wf pip install X | wf pytest | wf bash
+# Usage: bin/wf python ... | bin/wf pytest -q | bin/wf ruff check . | bin/wf bash
+#
+# Code is imported from the clone this script lives in, so personal clones test
+# their own changes, while the venv, caches, data and runs are shared from the
+# canonical copy (one install, one dataset, one place for results).
 set -euo pipefail
-W=/srv/sfsu_srv/wf-spread
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SHARED=/srv/sfsu_srv/wf-spread
 SIF=/srv/sfsu_srv/containers/pytorch-26.09.sif
 exec apptainer exec --nv --bind /srv/sfsu_srv --pwd "$PWD" \
-  --env "VIRTUAL_ENV=$W/.venv,PIP_CONSTRAINT=$W/env/constraints.txt,PIP_CACHE_DIR=$W/.cache/pip,HF_HOME=$W/.cache/hf,WANDB_DIR=$W/runs,PYTHONPATH=$W/src" \
+  --env "VIRTUAL_ENV=$SHARED/.venv,PIP_CONSTRAINT=$SHARED/env/constraints.txt,PIP_CACHE_DIR=$SHARED/.cache/pip,HF_HOME=$SHARED/.cache/hf,WF_DATA=$SHARED/data,WF_RUNS=$SHARED/runs,WANDB_DIR=$SHARED/runs,PYTHONPATH=$REPO/src" \
   "$SIF" bash -c 'export PATH="$VIRTUAL_ENV/bin:$PATH"; exec "$@"' wf "${@:-bash}"
