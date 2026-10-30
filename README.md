@@ -1,27 +1,48 @@
-# wf-spread — Team 7: fine-tuning Galileo for next-day wildfire spread
+# wf-spread: fine-tuning Galileo for next-day wildfire spread
 
-Plan: `../project-plan.md` · Schedule: `../project-pathway.md`
+SFSU CSC 671/871 (Fall 2026), Team 7.
 
-## Run anything through `bin/wf`
-`bin/wf` runs a command inside the NGC PyTorch container (`/srv/sfsu_srv/containers/pytorch-26.09.sif`) with the project venv active. It works the same on spark-61dd and gx10-6d0c.
+We fine-tune Galileo, an open-weight Earth-observation foundation model, to predict next-day wildfire spread as per-pixel segmentation on Google's Next Day Wildfire Spread (NDWS) dataset. We compare it with from-scratch and ImageNet-pretrained networks, and add a case study on 2021 California fires.
 
-    cd /srv/sfsu_srv/wf-spread
-    bin/wf python -c "import torch; print(torch.cuda.is_available())"
-    bin/wf pytest -q            # environment + data smoke tests
-    bin/wf bash                 # interactive shell inside the container
+## Quick start
 
-## Installing packages
-Add the package to `env/requirements.txt`, then run `bin/wf pip install -r env/requirements.txt`, then `bin/wf pip check`.
-`env/constraints.txt` pins every package the container ships (torch, numpy, ...), so pip can never replace the NVIDIA build.
-Never run `pip install` outside `bin/wf`.
+```bash
+cd /srv/sfsu_srv/dev/$USER/wf-spread     # your personal clone (see docs/development.md)
+bin/wf pytest -q                         # environment, GPU and data checks
+bin/wf python -c "import torch; print(torch.cuda.get_device_name(0))"
+```
 
-## Layout
-    bin/          wf wrapper
-    env/          requirements, constraints (container pins), installed versions
-    configs/      one YAML per experiment
-    src/wfspread/ data (loader, transforms), models (baselines, Galileo wrapper), train, eval (metrics)
-    tests/        pytest; run before every sweep
-    scripts/      one-off scripts (conversion, downloads)
-    third_party/galileo/  official Galileo code at commit 0f0b5b9 (do not edit)
-    data/         raw (read-only), processed, models (not in git)
-    runs/         logs, checkpoints, W&B, Optuna journals (not in git)
+`bin/wf` runs a command in the NGC PyTorch 26.09 container with the shared project venv, on either Spark.
+
+## Project layout
+
+```
+wf-spread/
+├── .github/            PR template, CI workflow
+├── .githooks/          pre-commit, commit-msg, pre-push
+├── bin/wf              run anything inside the container + venv
+├── configs/            YAML per experiment: data/, model/, experiment/
+├── docs/               development.md, data.md (more pages as features land)
+├── env/                requirements.txt, constraints.txt (container pins), installed versions
+├── notebooks/          exploration only; nothing the report depends on
+├── scripts/            entry points: setup/, data/, train/, eval/
+├── src/wfspread/       the package
+│   ├── data/           NDWS loading, conversion, transforms
+│   ├── models/         baselines and the Galileo wrapper
+│   ├── train/          shared training module and loops
+│   ├── eval/           metrics, bootstrap, evaluation runs
+│   ├── serve/          inference and serving
+│   └── utils/          seeding, logging, config helpers
+├── tests/              unit/, integration/, regression/ (mirrors src/)
+├── third_party/galileo official Galileo code at commit 0f0b5b9 (do not edit)
+├── data/  runs/        shared datasets and outputs (not in git)
+└── pyproject.toml      package metadata, ruff and pytest config
+```
+
+## Contributing
+
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md). It covers branches, commits, PRs, code style, comments, tests and documentation. Coding agents follow [`AGENTS.md`](AGENTS.md).
+
+## Data and licenses
+
+See [`docs/data.md`](docs/data.md). Code: MIT. NDWS: CC BY 4.0. Galileo: MIT.
