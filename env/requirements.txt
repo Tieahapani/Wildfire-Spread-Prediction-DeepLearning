@@ -11,3 +11,4 @@ captum
 tfrecord
 h5py
 pytest
+ruff
