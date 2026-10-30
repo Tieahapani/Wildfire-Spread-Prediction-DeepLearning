@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    # GPU and data tests run on the Sparks through the pre-push hook;
+    # CI checks what can run anywhere: formatting, lint and commit messages.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff==0.17.3
+      - run: ruff format --check .
+      - run: ruff check .
+      - name: Commit message format
+        if: github.event_name == 'pull_request'
+        run: |
+          for sha in $(git rev-list ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}); do
+            git log -1 --format=%B "$sha" > /tmp/msg
+            bash .githooks/commit-msg /tmp/msg || { echo "bad message in $sha"; exit 1; }
+          done

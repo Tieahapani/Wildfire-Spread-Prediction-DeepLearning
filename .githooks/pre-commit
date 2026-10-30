@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Block commits whose staged Python files are unformatted or fail lint.
+set -euo pipefail
+RUFF=/srv/sfsu_srv/wf-spread/.venv/bin/ruff  # static binary: runs without the container
+
+mapfile -t files < <(git diff --cached --name-only --diff-filter=ACMR -- '*.py' ':!third_party/')
+[[ ${#files[@]} -eq 0 ]] && exit 0
+
+if ! "$RUFF" format --check --quiet "${files[@]}"; then
+  echo "pre-commit: unformatted files. Run: bin/wf ruff format . && git add -u" >&2
+  exit 1
+fi
+"$RUFF" check --quiet "${files[@]}" || { echo "pre-commit: fix the lint errors above" >&2; exit 1; }

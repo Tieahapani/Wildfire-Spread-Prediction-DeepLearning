@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Enforce the Conventional Commits format from CONTRIBUTING.md §2.
+set -euo pipefail
+msg_file=$1
+subject=$(grep -v '^#' "$msg_file" | head -n1)
+
+# Messages git writes itself, and fixups that autosquash removes, pass through.
+[[ $subject =~ ^(Merge|Revert|fixup!|squash!|amend!) ]] && exit 0
+
+types='feat|fix|perf|refactor|test|docs|exp|build|ci|chore'
+if ! [[ $subject =~ ^($types)(\([a-z0-9-]+\))?:\ [a-z0-9].*[^.]$ ]]; then
+  cat >&2 <<MSG
+commit-msg: subject must be "type(scope): imperative summary"
+  types: ${types//|/, }
+  lowercase start, no trailing period. Example: feat(eval): add masked PR-AUC metric
+  got:   $subject
+MSG
+  exit 1
+fi
+if (( ${#subject} > 72 )); then
+  echo "commit-msg: subject is ${#subject} chars; keep it to 72" >&2
+  exit 1
+fi
+second=$(grep -v '^#' "$msg_file" | sed -n 2p)
+if [[ -n $second ]]; then
+  echo "commit-msg: leave a blank line between the subject and the body" >&2
+  exit 1
+fi

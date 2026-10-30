@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Block direct pushes to main, and pushes from a branch whose tests fail.
+set -euo pipefail
+repo=$(git rev-parse --show-toplevel)
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [[ $remote_ref == refs/heads/main && ${WF_ALLOW_MAIN_PUSH:-0} != 1 ]]; then
+    echo "pre-push: never push to main directly; push a branch and open a PR" >&2
+    exit 1
+  fi
+done
+
+# Behind origin/main means the PR would test stale code.
+git fetch --quiet origin main || true
+if git rev-parse --verify --quiet origin/main >/dev/null \
+   && ! git merge-base --is-ancestor origin/main HEAD; then
+  echo "pre-push: branch is behind origin/main. Run: git rebase origin/main" >&2
+  exit 1
+fi
+
+echo "pre-push: running tests (bin/wf pytest -q)" >&2
+"$repo/bin/wf" pytest -q
