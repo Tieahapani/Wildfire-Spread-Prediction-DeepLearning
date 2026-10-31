@@ -27,3 +27,13 @@ jobs:
             git log -1 --format=%B "$sha" > /tmp/msg
             bash .githooks/commit-msg /tmp/msg || { echo "bad message in $sha"; exit 1; }
           done
+      - name: No AI attribution in PR description
+        if: github.event_name == 'pull_request'
+        # Passed through env, not inlined, so the PR text can't inject shell.
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          ai='(claude|anthropic|openai|chatgpt|gpt-[0-9]|copilot|gemini|codex|cursor)'
+          if printf '%s\n' "$PR_BODY" | grep -qiE "^co-authored-by:.*$ai|generated (with|by) .*$ai"; then
+            echo "PR description contains AI attribution; remove it"; exit 1
+          fi

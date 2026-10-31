@@ -25,7 +25,7 @@ These instructions apply to any LLM or coding agent working in this repository. 
 4. **Commit message:**
    - Conventional Commits: `type(scope): imperative summary` of 72 characters or fewer.
    - Then a blank line, one or two sentences of why, and `-` bullet points covering what changed and how it was verified.
-   - End with your attribution trailer.
+   - No AI attribution: no `Co-Authored-By` line for an AI tool and no "Generated with" line, in commits or PR descriptions. The hook and CI reject them.
 
 ## Before every push
 1. `git fetch origin && git rebase origin/main`, then rerun the tests.

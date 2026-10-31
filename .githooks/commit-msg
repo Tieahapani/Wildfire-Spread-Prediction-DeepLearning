@@ -4,6 +4,14 @@ set -euo pipefail
 msg_file=$1
 subject=$(grep -v '^#' "$msg_file" | head -n1)
 
+# The person committing is the author; AI tools are never credited (CONTRIBUTING §2).
+# Checked before the pass-through below so merges and reverts are covered too.
+ai='(claude|anthropic|openai|chatgpt|gpt-[0-9]|copilot|gemini|codex|cursor)'
+if grep -v '^#' "$msg_file" | grep -qiE "^co-authored-by:.*$ai|generated (with|by) .*$ai"; then
+  echo "commit-msg: remove AI attribution (Co-Authored-By or 'Generated with' line)" >&2
+  exit 1
+fi
+
 # Messages git writes itself, and fixups that autosquash removes, pass through.
 [[ $subject =~ ^(Merge|Revert|fixup!|squash!|amend!) ]] && exit 0
 

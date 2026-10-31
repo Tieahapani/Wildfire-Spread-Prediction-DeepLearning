@@ -90,7 +90,7 @@ Every model's results go through one metrics module, so the -1
 - Unit tests on hand-built 4x4 cases with known answers
 ```
 
-The `commit-msg` hook rejects subjects that don't match the format. Coding agents end the message with their attribution trailer, for example `Co-Authored-By: ...`.
+The `commit-msg` hook rejects subjects that don't match the format. Commits and PR descriptions carry no AI attribution: no `Co-Authored-By` line for an AI tool and no "Generated with" line. The person who commits is the author and is responsible for the change, whichever tools helped. The hook and CI reject AI attribution.
 
 ## 3. Pull requests
 
