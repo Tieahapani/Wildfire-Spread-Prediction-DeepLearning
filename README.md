@@ -41,7 +41,7 @@ wf-spread/
 
 ## Contributing
 
-Read [`CONTRIBUTING.md`](CONTRIBUTING.md). It covers branches, commits, PRs, code style, comments, tests and documentation. Coding agents follow [`AGENTS.md`](AGENTS.md).
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md). It covers branches, commits, PRs, code style, comments, tests and documentation. Coding agents follow [`AGENTS.md`](AGENTS.md). Claude Code, Gemini CLI and GitHub Copilot load it through `CLAUDE.md`, `GEMINI.md` and `.github/copilot-instructions.md`; Codex and Cursor read it directly.
 
 ## Data and licenses
 
