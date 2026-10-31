@@ -59,4 +59,4 @@ Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request. Coding 
 
 ## License
 
-MIT for this project's code. Vendored Galileo code keeps its own [MIT license](third_party/galileo/LICENSE).
+[MIT](LICENSE). Vendored Galileo code keeps its own [MIT license](third_party/galileo/LICENSE).
