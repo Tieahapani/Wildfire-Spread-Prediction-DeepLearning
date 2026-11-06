@@ -17,3 +17,11 @@ wandb/
 *.npz
 *.h5
 *.tfrecord
+
+# Team planning documents stay out of this public repo
+*.docx
+/team-docs/
+/project-plan.md
+/project-pathway.md
+/course-project-description.md
+/batch-format-draft.md
