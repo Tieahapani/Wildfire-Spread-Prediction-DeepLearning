@@ -5,7 +5,6 @@
 </p>
 
 <p align="center">
-  <a href="docs/development.md">Setup</a> ·
   <a href="docs/data.md">Data</a> ·
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
@@ -37,7 +36,7 @@ scripts/setup/dev-setup.sh      # git hooks and rebase defaults
 bin/wf pytest -q                # checks GPU, environment and data
 ```
 
-`bin/wf` runs any command inside the container with the project environment, for example `bin/wf python`, `bin/wf pytest` or `bin/wf ruff`. Package versions are pinned in [`env/`](env/). The shared environment and data paths are set up as described in [`docs/development.md`](docs/development.md).
+`bin/wf` runs any command inside the container with the project environment, for example `bin/wf python`, `bin/wf pytest` or `bin/wf ruff`. Package versions are pinned in [`env/`](env/).
 
 ## Data
 
