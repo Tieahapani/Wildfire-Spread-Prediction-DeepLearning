@@ -1,0 +1,52 @@
+"""Training settings, loaded from a YAML file so every run comes from a config."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, fields
+from pathlib import Path
+
+import yaml
+
+
+@dataclass(frozen=True)
+class TrainConfig:
+    """Optimizer, schedule, stopping and precision settings for one run.
+
+    Attributes:
+        seed: Seed for torch, numpy, Python and data loader workers.
+        max_epochs: Upper limit on epochs; early stopping usually ends sooner.
+        lr: Peak AdamW learning rate.
+        weight_decay: AdamW weight decay.
+        warmup_epochs: Epochs of linear warmup before cosine decay.
+        min_lr: Learning rate at the end of the cosine decay.
+        grad_clip: Gradient norm limit.
+        pos_weight: Weight on fire pixels in the loss.
+        patience: Validation epochs without a better PR-AUC before stopping.
+        precision: Lightning precision setting, for example "32-true" or "bf16-mixed".
+        check_batches: Validate every batch against the batch format; slower, for debugging.
+    """
+
+    seed: int = 0
+    max_epochs: int = 100
+    lr: float = 3e-4
+    weight_decay: float = 0.01
+    warmup_epochs: int = 2
+    min_lr: float = 1e-6
+    grad_clip: float = 1.0
+    pos_weight: float = 1.0
+    patience: int = 15
+    precision: str = "32-true"
+    check_batches: bool = False
+
+    @classmethod
+    def from_yaml(cls, path: Path) -> TrainConfig:
+        """Load settings from a YAML file; missing keys keep their defaults.
+
+        Raises:
+            ValueError: If the file has a key this class does not define.
+        """
+        values = yaml.safe_load(Path(path).read_text()) or {}
+        unknown = set(values) - {f.name for f in fields(cls)}
+        if unknown:
+            raise ValueError(f"unknown training settings in {path}: {sorted(unknown)}")
+        return cls(**values)
