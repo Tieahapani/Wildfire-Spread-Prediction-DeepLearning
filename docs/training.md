@@ -38,3 +38,15 @@ Each run writes to `$WF_RUNS/<YYYYMMDD-HHMM>_<model>_<tag>/`:
 - `run.yaml`: settings, batch size, git commit, library versions and host
 - `logs/metrics.csv`: training and validation metrics, epoch time, peak GPU memory and free system memory
 - `checkpoints/`: best and last checkpoints
+
+## Sanity checks
+
+Run these on a few real batches before any search; they live in `wfspread.train.sanity`.
+
+| Check | Passes when | A failure means |
+|---|---|---|
+| `overfit_check` | PR-AUC on about 10 training tiles reaches 0.9 after training on them | A bug in the model, loss or data |
+| `shuffled_label_check` | With labels shuffled across pixels, validation PR-AUC stays at or below 2 × the fire rate | The score doesn't come from learning, for example scoring against the wrong mask |
+| `mask_check` | Changing predictions on unknown pixels changes neither the loss nor PR-AUC | Unknown pixels leak into the loss or metrics |
+
+Labels are shuffled pixel by pixel, not tile by tile, because fires sit near the tile center and a model could learn that position honestly.
