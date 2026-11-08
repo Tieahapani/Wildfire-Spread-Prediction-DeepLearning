@@ -14,7 +14,7 @@ These instructions apply to any LLM or coding agent working in this repository. 
   - Follow the naming, indexing and shape conventions in CONTRIBUTING §4.
   - Type hints on public functions.
   - Google-style docstrings with shapes, dtypes and units.
-- **Comments say *why*, never restate the code.** Use block comments for logical steps. Cite sources for numbers. Leave no commented-out code.
+- **Comment only where it helps.** Most code needs no comment. Add one only for a reason, a source or a trap the code can't show, never to restate a line. Leave no commented-out code.
 - Tests go in the mirrored path under `tests/`. A bug fix starts with a failing regression test.
 - Update docs (README, `docs/`, docstrings) in the same commit as the behavior they describe.
 
@@ -25,10 +25,12 @@ These instructions apply to any LLM or coding agent working in this repository. 
 4. **Commit message:**
    - Conventional Commits: `type(scope): imperative summary` of 72 characters or fewer.
    - Then a blank line, one or two sentences of why, and `-` bullet points covering what changed and how it was verified.
+   - Plain words only: no code snippets in the message.
 
 ## Before every push
 1. `git fetch origin && git rebase origin/main`, then rerun the tests.
-2. Push your branch and open a PR using the template. Never push to `main`, and never merge a PR yourself. A team member merges.
+2. Push your branch and open a PR using the template. Never push to `main` directly.
+3. Authors may merge their own PRs once CI is green. An agent merges only when the person it works for explicitly asks.
 
 ## Never
 - Never commit secrets, data, weights, checkpoints, `runs/`, or IP addresses. The repo is public.

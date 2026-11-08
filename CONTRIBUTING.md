@@ -42,8 +42,8 @@ git push -u origin feat/eval-pr-auc            # 5. push the branch, open a PR
 ## 2. Commits
 
 ### Size: one logical change per commit
-- A commit does **one thing completely**: the code, its tests and its doc update together. It builds and passes the tests on its own.
-- **Not fragmented.** "wip", "fix typo", "oops" and "try again" never reach a PR branch. Fold them in with `git commit --fixup <sha>`, then `git rebase -i --autosquash origin/main`.
+- A commit is **one complete change**, for example a new metric together with its tests and docs. The project still works after each commit.
+- **Not fragmented.** Don't split one change into "wip", "fix typo" or "try again" commits. Fold small fixes into the commit they belong to with `git commit --fixup <sha>`, then `git rebase -i --autosquash origin/main`.
 - **Not clustered.** Unrelated changes, such as a new metric plus a loader refactor plus a config tweak, are separate commits.
 - **Test of a good split:** could someone revert this one commit without breaking anything else, and does its subject describe all of it?
 
@@ -84,11 +84,13 @@ feat(eval): add masked PR-AUC and spread-only metrics
 Every model's results go through one metrics module, so the -1
 (uncertain) pixels must be excluded identically everywhere.
 
-- Add pr_auc() that drops label -1 pixels before scoring
-- Add spread_only mask: pixels not burning on day t
+- Add PR-AUC that drops uncertain (-1) pixels before scoring
+- Add a spread-only mask: pixels not burning on day t
 - Add paired bootstrap CI over tiles (1,000 resamples, fixed seed)
 - Unit tests on hand-built 4x4 cases with known answers
 ```
+
+Write the message in plain words. Don't paste code into it; the diff already shows the code.
 
 The `commit-msg` hook rejects subjects that don't match the format.
 
@@ -102,7 +104,7 @@ The `commit-msg` hook rejects subjects that don't match the format.
   - `bin/wf ruff format --check .` and `bin/wf ruff check .` are clean
   - CI is green
 - **Review:** any of the three of us can review any PR. Ask for a review when the change affects someone else's area or the shared pipeline (data, metrics, training core). The reviewer checks logic, tests and the rules here, not just style.
-- **Who merges:** any team member can merge any PR, **including their own**, once CI is green and the template checklist is complete. Approval is encouraged but not required. Coding agents never merge; a person does.
+- **Who merges:** any team member can merge any PR, **including their own**, once CI is green and the template checklist is complete. Approval is encouraged but not required. A coding agent merges only when the person it works for explicitly asks, and only once CI is green.
 - **Merging:** use **"Rebase and merge"**, so each clean commit lands on `main` as-is. Use "Squash and merge" only if the whole PR is one logical change.
 - **After merging:** the person who merged deletes the branch, then updates the shared copy with `cd /srv/sfsu_srv/wf-spread && git pull --ff-only`.
 
@@ -140,7 +142,7 @@ One name per concept across the whole codebase: `train` / `val` / `test` for spl
 
 ## 5. Comments and docstrings
 
-**Comments explain *why*, not *what*.** The code already says what it does. A comment adds intent, a reason, a source, units, or a non-obvious constraint.
+**Comment sparingly, and only to explain *why*.** Most code needs no comment: clear names and small functions say what it does. Add a comment only where a reader would otherwise miss something: a reason, a source, units, or a non-obvious constraint. Don't comment every line or every step.
 
 ```python
 # Bad: restates the code
@@ -154,7 +156,7 @@ x = x.flip(-1)
 theta = (360 - theta) % 360
 ```
 
-- **Block comments** above a logical section (3–15 lines that do one step) say what the step is *for*: "Normalize reused bands with Galileo's pretraining statistics so the frozen patch embeddings see familiar ranges."
+- **A short block comment** above a section is fine when its purpose isn't obvious from the code: "Normalize reused bands with Galileo's pretraining statistics so the frozen patch embeddings see familiar ranges."
 - **Cite sources** for numbers and choices: `# Huot et al. 2022, Table II`, or `# Galileo normalization.json, commit 0f0b5b9`.
 - **No commented-out code, no stale comments.** Delete it; git remembers. When you change code, update its comments in the same commit.
 - **`TODO(name): ...`** only with an owner. Open an issue for anything that outlives the PR.
@@ -188,7 +190,7 @@ def pr_auc(probs: Tensor, labels: Tensor) -> float:
 |---|---|---|
 | `tests/unit/` | Pure logic on small hand-built inputs with known answers: metrics, transforms, shapes, config parsing | seconds, CPU |
 | `tests/integration/` | Real pieces together: environment, GPU, data files, one batch through each model | under 1 minute |
-| `tests/regression/` | Published or previously measured numbers must not drift, e.g. persistence PR-AUC 0.115 ± 0.01 and LR 0.198 ± 0.01, and frozen metric outputs on a fixed batch | minutes; marked `slow` |
+| `tests/regression/` | Published or previously measured numbers must not drift, e.g. persistence precision and recall close to Huot et al. 2022, and frozen metric outputs on a fixed batch | minutes; marked `slow` |
 
 - **Bug fix = regression test first.** Write a test that fails on the bug, then fix it.
 - **New code ships with tests** in the same commit, in the mirrored path (`src/wfspread/eval/metrics.py` → `tests/unit/eval/test_metrics.py`).
