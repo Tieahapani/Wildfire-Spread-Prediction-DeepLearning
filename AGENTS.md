@@ -29,7 +29,7 @@ These instructions apply to any LLM or coding agent working in this repository. 
 
 ## Before every push
 1. `git fetch origin && git rebase origin/main`, then rerun the tests.
-2. Push your branch and open a PR using the template. Never push to `main` directly.
+2. Push your branch and open a PR with the description in CONTRIBUTING §3. Never push to `main` directly.
 3. Authors may merge their own PRs once CI is green. An agent merges only when the person it works for explicitly asks.
 
 ## Never

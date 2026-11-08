@@ -23,7 +23,7 @@ Contents:
 
 ## 1. Workflow
 
-**Each person works in their own clone.** The shared copy at `/srv/sfsu_srv/wf-spread` holds the shared data, venv and runs. It always stays on `main` and is updated only with `git pull --ff-only`. Nobody edits code there. See `docs/development.md` for setup.
+**Each person works in their own clone.** The shared copy at `/srv/sfsu_srv/wf-spread` holds the shared data, venv and runs. It always stays on `main` and is updated only with `git pull --ff-only`. Nobody edits code there.
 
 ```
 git switch main && git pull --rebase           # 1. start from the latest main
@@ -97,14 +97,14 @@ The `commit-msg` hook rejects subjects that don't match the format.
 ## 3. Pull requests
 
 - **Size:** one PR is one task, ideally under about 400 changed lines. Split anything bigger.
-- **Description:** fill in the template in `.github/pull_request_template.md`: summary, changes, how it was tested, results, checklist.
+- **Description:** a short summary of what and why, the changes, how it was tested, and results on `val` (or "n/a").
 - **Before you ask for review:**
   - rebased on `origin/main`
   - `bin/wf pytest -q` passes
   - `bin/wf ruff format --check .` and `bin/wf ruff check .` are clean
   - CI is green
 - **Review:** any of the three of us can review any PR. Ask for a review when the change affects someone else's area or the shared pipeline (data, metrics, training core). The reviewer checks logic, tests and the rules here, not just style.
-- **Who merges:** any team member can merge any PR, **including their own**, once CI is green and the template checklist is complete. Approval is encouraged but not required. A coding agent merges only when the person it works for explicitly asks, and only once CI is green.
+- **Who merges:** any team member can merge any PR, **including their own**, once CI is green and the checks above are done. Approval is encouraged but not required. A coding agent merges only when the person it works for explicitly asks, and only once CI is green.
 - **Merging:** use **"Rebase and merge"**, so each clean commit lands on `main` as-is. Use "Squash and merge" only if the whole PR is one logical change.
 - **After merging:** the person who merged deletes the branch, then updates the shared copy with `cd /srv/sfsu_srv/wf-spread && git pull --ff-only`.
 
@@ -203,7 +203,7 @@ The `pre-commit` hook runs ruff on staged files. The `pre-push` hook runs the de
 ## 7. Documentation
 
 - **`README.md`:** what the project is, quick start, layout. Update it when commands or layout change.
-- **`docs/`:** longer documentation: `development.md` (setup, workflow), `data.md` (datasets, provenance, licenses), and further pages as features land, e.g. `models.md`, `experiments.md`.
+- **`docs/`:** longer documentation: `data.md` (datasets, provenance, licenses), `batch-format.md` (what loaders return), and further pages as features land, e.g. `models.md`, `experiments.md`.
 - **Docstrings** document the API. `docs/` documents how the pieces fit together and why.
 - **Configs are self-describing:** a short header comment per YAML file says what the experiment tests.
 - **Docs change in the same commit as the behavior they describe.**

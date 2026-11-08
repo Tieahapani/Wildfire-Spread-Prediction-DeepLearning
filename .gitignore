@@ -25,3 +25,7 @@ wandb/
 /project-pathway.md
 /course-project-description.md
 /batch-format-draft.md
+
+# Local-only setup notes and PR template
+/docs/development.md
+/.github/pull_request_template.md
