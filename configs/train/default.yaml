@@ -1,0 +1,15 @@
+# Default training settings for MLP and U-Net runs.
+# AdamW, warmup + cosine and gradient clipping follow FireSenseNet (arXiv 2604.07675)
+# and ShearFuse-UNet (arXiv 2606.14071). Use bf16 only if the model's last layer runs
+# in float32; see docs/batch-format.md.
+seed: 0
+max_epochs: 100
+lr: 3.0e-4
+weight_decay: 0.01
+warmup_epochs: 2
+min_lr: 1.0e-6
+grad_clip: 1.0
+pos_weight: 1.0
+patience: 15
+precision: 32-true
+check_batches: false
