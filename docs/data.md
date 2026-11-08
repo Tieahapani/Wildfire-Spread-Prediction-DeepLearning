@@ -16,6 +16,7 @@ All files are under `$WF_DATA` (`/srv/sfsu_srv/wf-spread/data`), which is not in
 
   Checked by `tests/integration/test_environment.py`.
 - **Tile format:** 64 × 64 at 1 km, with 12 input channels plus a `FireMask` target. Label values are 1 (fire), 0 (no fire) and −1 (uncertain or cloud).
+- **Batches:** what the loaders return is defined in [`batch-format.md`](batch-format.md).
 
 ## Galileo encoder weights
 
