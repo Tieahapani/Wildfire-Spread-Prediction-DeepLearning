@@ -12,7 +12,7 @@ config = TrainConfig.from_yaml("configs/train/default.yaml")
 run_dir = fit(model, train_loader, val_loader, config, run_name="unet_baseline")
 ```
 
-- `model` maps `inputs` `(B, C, H, W)` to fire logits `(B, H, W)`; see [`batch-format.md`](batch-format.md).
+- `model` maps `inputs` `(B, C, H, W)` to fire logits `(B, H, W)`; see [`batch-format.md`](batch-format.md). Build it from a config with `load_model`; see [`models.md`](models.md).
 - Loaders return batches in the batch format. The training loader shuffles and uses `drop_last=True`; the validation loader does not shuffle.
 - Runs that drop a channel pass `num_channels`.
 

@@ -1,0 +1,8 @@
+# U-Net baseline: three encoder levels and a 256-channel bottleneck,
+# about 1.93M parameters. Takes 64x64 tiles or crops with sides divisible by 8.
+name: unet
+args:
+  in_ch: 13
+  enc_channels: [32, 64, 128]
+  bottleneck_ch: 256
+  dropout: 0.1

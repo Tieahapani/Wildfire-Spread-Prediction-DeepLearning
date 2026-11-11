@@ -6,6 +6,8 @@
 
 <p align="center">
   <a href="docs/data.md">Data</a> ·
+  <a href="docs/models.md">Models</a> ·
+  <a href="docs/training.md">Training</a> ·
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
