@@ -1,4 +1,5 @@
 import csv
+from pathlib import Path
 
 import pytest
 import torch
@@ -6,8 +7,11 @@ import yaml
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
+from wfspread.models.registry import load_model
 from wfspread.train.config import TrainConfig
 from wfspread.train.run import fit
+
+UNET_CONFIG = Path(__file__).resolve().parents[2] / "configs" / "model" / "unet.yaml"
 
 
 class _TileDataset(Dataset):
@@ -82,6 +86,17 @@ def test_same_seed_gives_the_same_result(tmp_path, fake_tiles):
     _, first = _train(tmp_path / "a", fake_tiles, max_epochs=2)
     _, second = _train(tmp_path / "b", fake_tiles, max_epochs=2)
     assert _last(first, "val/all/pr_auc") == _last(second, "val/all/pr_auc")
+
+
+def test_unet_from_its_config_trains_through_fit(tmp_path, fake_tiles):
+    config = TrainConfig(max_epochs=2, warmup_epochs=1, diagnostics_every_n_steps=1)
+    train = DataLoader(_TileDataset(fake_tiles(32, seed=0)), batch_size=8, drop_last=True)
+    val = DataLoader(_TileDataset(fake_tiles(16, seed=1)), batch_size=8)
+    run_dir = fit(load_model(UNET_CONFIG), train, val, config, "unet_test", tmp_path, "cpu")
+    rows = list(csv.DictReader((run_dir / "logs" / "metrics.csv").open()))
+    assert len(_values(rows, "val/all/pr_auc")) == 2
+    assert _last(rows, "diag/update/head.weight") > 0
+    assert list((run_dir / "checkpoints").glob("best-*.ckpt"))
 
 
 @pytest.mark.gpu
