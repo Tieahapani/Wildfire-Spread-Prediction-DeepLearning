@@ -36,8 +36,18 @@ Settings and defaults are in `configs/train/default.yaml`; unknown keys are reje
 Each run writes to `$WF_RUNS/<YYYYMMDD-HHMM>_<model>_<tag>/`:
 
 - `run.yaml`: settings, batch size, git commit, library versions and host
-- `logs/metrics.csv`: training and validation metrics, epoch time, peak GPU memory and free system memory
+- `logs/metrics.csv`: training and validation metrics, diagnostics, epoch time, peak GPU memory and free system memory
 - `checkpoints/`: best and last checkpoints
+
+## Diagnostics
+
+Every `diagnostics_every_n_steps` optimizer steps (default 50; 0 turns them off), `TrainingDiagnostics` adds these columns to `logs/metrics.csv`:
+
+| Column | Meaning | What to look for |
+|---|---|---|
+| `diag/lr` | Learning rate used for that step | Follows the warmup and cosine schedule |
+| `diag/grad_norm` | Gradient norm before clipping | Often above `grad_clip` means clipping is doing much of the work; spikes point to bad batches |
+| `diag/update/<layer>` | Relative weight change ‖Δw‖ / ‖w‖ in one step, per weight tensor | About 1e-3 is typical for AdamW; far below means the layer has stopped learning, far above means steps are too large |
 
 ## Sanity checks
 

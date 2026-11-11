@@ -18,7 +18,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from wfspread.constants import NDWS_CHANNELS
-from wfspread.train.callbacks import ResourceMonitor
+from wfspread.train.callbacks import ResourceMonitor, TrainingDiagnostics
 from wfspread.train.config import TrainConfig
 from wfspread.train.module import MONITOR, FireModule
 
@@ -56,6 +56,21 @@ def fit(
     run_dir.mkdir(parents=True)
     _write_run_info(run_dir, config, train_loader)
 
+    callbacks: list[lightning.Callback] = [
+        ModelCheckpoint(
+            dirpath=run_dir / "checkpoints",
+            filename="best-{epoch:03d}",
+            monitor=MONITOR,
+            mode="max",
+            save_last=True,
+            auto_insert_metric_name=False,
+        ),
+        EarlyStopping(monitor=MONITOR, mode="max", patience=config.patience),
+        ResourceMonitor(),
+    ]
+    if config.diagnostics_every_n_steps > 0:
+        callbacks.append(TrainingDiagnostics(config.diagnostics_every_n_steps))
+
     trainer = lightning.Trainer(
         max_epochs=config.max_epochs,
         accelerator=accelerator,
@@ -64,18 +79,7 @@ def fit(
         gradient_clip_val=config.grad_clip,
         num_sanity_val_steps=0,
         logger=CSVLogger(run_dir, name="logs", version=""),
-        callbacks=[
-            ModelCheckpoint(
-                dirpath=run_dir / "checkpoints",
-                filename="best-{epoch:03d}",
-                monitor=MONITOR,
-                mode="max",
-                save_last=True,
-                auto_insert_metric_name=False,
-            ),
-            EarlyStopping(monitor=MONITOR, mode="max", patience=config.patience),
-            ResourceMonitor(),
-        ],
+        callbacks=callbacks,
         default_root_dir=run_dir,
     )
     trainer.fit(FireModule(model, config, num_channels), train_loader, val_loader)

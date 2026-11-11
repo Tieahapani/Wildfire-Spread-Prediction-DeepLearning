@@ -31,7 +31,13 @@ class _TinyNet(nn.Module):
 
 
 def _train(tmp_path, fake_tiles, accelerator="cpu", max_epochs=8):
-    config = TrainConfig(max_epochs=max_epochs, lr=1e-2, warmup_epochs=1, check_batches=True)
+    config = TrainConfig(
+        max_epochs=max_epochs,
+        lr=1e-2,
+        warmup_epochs=1,
+        check_batches=True,
+        diagnostics_every_n_steps=2,
+    )
     torch.manual_seed(0)
     model = _TinyNet()
     train = DataLoader(
@@ -60,6 +66,11 @@ def test_fit_learns_and_records_the_run(tmp_path, fake_tiles):
     assert _last(rows, "train/loss_epoch") < _values(rows, "train/loss_epoch")[0]
     assert _last(rows, "val/spread/pr_auc") > 0
     assert _last(rows, "time/epoch_s") > 0
+    lr = _values(rows, "diag/lr")
+    assert max(lr) == pytest.approx(1e-2, rel=0.05)
+    assert lr[-1] < lr[len(lr) // 2]
+    assert _last(rows, "diag/grad_norm") > 0
+    assert _last(rows, "diag/update/net.0.weight") > 0
     assert list((run_dir / "checkpoints").glob("best-*.ckpt"))
     info = yaml.safe_load((run_dir / "run.yaml").read_text())
     assert info["config"]["seed"] == 0
