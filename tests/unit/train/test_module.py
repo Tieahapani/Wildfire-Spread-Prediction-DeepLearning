@@ -3,6 +3,7 @@ import torch
 from torch import nn
 
 from wfspread.train.config import TrainConfig
+from wfspread.train.losses import masked_focal
 from wfspread.train.module import FireModule, warmup_cosine
 
 
@@ -59,3 +60,19 @@ def test_repo_default_config_loads():
     from wfspread.train.run import REPO_ROOT
 
     assert TrainConfig.from_yaml(REPO_ROOT / "configs/train/default.yaml") == TrainConfig()
+
+
+def test_module_trains_with_the_configured_loss():
+    torch.manual_seed(0)
+    module = FireModule(_TinyNet(), TrainConfig(loss_terms={"focal": 1.0}))
+    inputs = torch.randn(2, 13, 8, 8)
+    next_fire = torch.randint(0, 2, (2, 8, 8), dtype=torch.int8)
+    with torch.no_grad():
+        loss = module.loss_fn(module(inputs), next_fire)
+        expected = masked_focal(module(inputs), next_fire)
+    assert loss.item() == pytest.approx(expected.item())
+
+
+def test_module_rejects_an_unknown_loss():
+    with pytest.raises(ValueError, match="unknown loss"):
+        FireModule(_TinyNet(), TrainConfig(loss_terms={"hinge": 1.0}))

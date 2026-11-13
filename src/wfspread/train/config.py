@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 
 import yaml
@@ -20,7 +20,11 @@ class TrainConfig:
         warmup_epochs: Epochs of linear warmup before cosine decay.
         min_lr: Learning rate at the end of the cosine decay.
         grad_clip: Gradient norm limit.
-        pos_weight: Weight on fire pixels in the loss.
+        loss_terms: Weight per loss term, from "bce", "focal" and "dice"; the loss is
+            their weighted sum.
+        pos_weight: Weight on fire pixels in the BCE term.
+        focal_gamma: Focusing strength of the focal term.
+        focal_alpha: Weight on fire pixels in the focal term.
         patience: Validation epochs without a better PR-AUC before stopping.
         precision: Lightning precision setting, for example "32-true" or "bf16-mixed".
         check_batches: Validate every batch against the batch format; slower, for debugging.
@@ -35,7 +39,10 @@ class TrainConfig:
     warmup_epochs: int = 2
     min_lr: float = 1e-6
     grad_clip: float = 1.0
+    loss_terms: dict[str, float] = field(default_factory=lambda: {"bce": 1.0})
     pos_weight: float = 1.0
+    focal_gamma: float = 2.0
+    focal_alpha: float = 0.25
     patience: int = 15
     precision: str = "32-true"
     check_batches: bool = False
