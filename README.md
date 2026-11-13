@@ -8,6 +8,7 @@
   <a href="docs/data.md">Data</a> ·
   <a href="docs/models.md">Models</a> ·
   <a href="docs/training.md">Training</a> ·
+  <a href="docs/efficiency.md">Efficiency</a> ·
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
