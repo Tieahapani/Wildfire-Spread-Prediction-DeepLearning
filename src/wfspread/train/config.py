@@ -24,6 +24,8 @@ class TrainConfig:
         patience: Validation epochs without a better PR-AUC before stopping.
         precision: Lightning precision setting, for example "32-true" or "bf16-mixed".
         check_batches: Validate every batch against the batch format; slower, for debugging.
+        diagnostics_every_n_steps: Log learning rate, gradient norm and per-layer weight
+            change every this many optimizer steps; 0 turns diagnostics off.
     """
 
     seed: int = 0
@@ -37,6 +39,7 @@ class TrainConfig:
     patience: int = 15
     precision: str = "32-true"
     check_batches: bool = False
+    diagnostics_every_n_steps: int = 50
 
     @classmethod
     def from_yaml(cls, path: Path) -> TrainConfig:

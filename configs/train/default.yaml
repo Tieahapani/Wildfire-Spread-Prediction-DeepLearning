@@ -13,3 +13,4 @@ pos_weight: 1.0
 patience: 15
 precision: 32-true
 check_batches: false
+diagnostics_every_n_steps: 50
