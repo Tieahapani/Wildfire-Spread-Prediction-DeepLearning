@@ -20,7 +20,7 @@ run_dir = fit(model, train_loader, val_loader, config, run_name="unet_baseline")
 
 | Part | Choice |
 |---|---|
-| Loss | Masked binary cross-entropy over valid pixels, optional fire weight (`pos_weight`) |
+| Loss | Weighted sum of masked BCE (optional fire weight `pos_weight`), focal and Dice, set by `loss_terms`; all skip unknown pixels. Default: plain BCE |
 | Optimizer | AdamW; linear warmup, then cosine decay to `min_lr`, updated every step |
 | Gradients | Norm clipped at `grad_clip` |
 | Validation | Predictions for the whole split are scored once per epoch with `wfspread.eval.metrics.evaluate`. F1 and IoU use the best-F1 threshold on validation |
@@ -48,6 +48,16 @@ Every `diagnostics_every_n_steps` optimizer steps (default 50; 0 turns them off)
 | `diag/lr` | Learning rate used for that step | Follows the warmup and cosine schedule |
 | `diag/grad_norm` | Gradient norm before clipping | Often above `grad_clip` means clipping is doing much of the work; spikes point to bad batches |
 | `diag/update/<layer>` | Relative weight change ‖Δw‖ / ‖w‖ in one step, per weight tensor | About 1e-3 is typical for AdamW; far below means the layer has stopped learning, far above means steps are too large |
+
+## Losses
+
+| Term | Function | Settings |
+|---|---|---|
+| `bce` | `masked_bce` | `pos_weight`: weight on fire pixels |
+| `focal` | `masked_focal`: BCE scaled by `alpha_t * (1 - p_t) ** gamma` (Lin et al. 2017) | `focal_gamma` (2.0), `focal_alpha` (0.25, weight on fire pixels) |
+| `dice` | `masked_dice`: soft Dice over the valid pixels of the whole batch, since many tiles have no next-day fire | none |
+
+`loss_terms` gives each term a weight, for example `{bce: 0.4, dice: 0.3, focal: 0.3}`. Because the terms are on different scales, `val/loss` is not comparable across losses; compare runs on `val/all/pr_auc`.
 
 ## Sanity checks
 

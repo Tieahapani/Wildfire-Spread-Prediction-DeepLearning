@@ -13,7 +13,7 @@ from wfspread.constants import NDWS_CHANNELS
 from wfspread.data.batch import check_batch
 from wfspread.eval.metrics import best_f1_threshold, evaluate
 from wfspread.train.config import TrainConfig
-from wfspread.train.losses import masked_bce
+from wfspread.train.losses import make_loss
 
 MONITOR = "val/all/pr_auc"
 
@@ -51,6 +51,9 @@ class FireModule(lightning.LightningModule):
         self.model = model
         self.config = config
         self.num_channels = num_channels
+        self.loss_fn = make_loss(
+            config.loss_terms, config.pos_weight, config.focal_gamma, config.focal_alpha
+        )
         self._val_outputs: list[tuple[Tensor, Tensor, Tensor]] = []
         self.save_hyperparameters({**asdict(config), "num_channels": num_channels})
 
@@ -67,7 +70,7 @@ class FireModule(lightning.LightningModule):
         """Masked loss on one training batch."""
         if self.config.check_batches:
             check_batch(batch, self.num_channels)
-        loss = masked_bce(self(batch["inputs"]), batch["next_fire"], self.config.pos_weight)
+        loss = self.loss_fn(self(batch["inputs"]), batch["next_fire"])
         self.log("train/loss", loss, on_step=True, on_epoch=True, batch_size=len(batch["inputs"]))
         return loss
 
@@ -80,7 +83,7 @@ class FireModule(lightning.LightningModule):
         if self.config.check_batches:
             check_batch(batch, self.num_channels)
         logits = self(batch["inputs"])
-        loss = masked_bce(logits, batch["next_fire"], self.config.pos_weight)
+        loss = self.loss_fn(logits, batch["next_fire"])
         self.log("val/loss", loss, on_epoch=True, batch_size=len(batch["inputs"]))
         self._val_outputs.append(
             (torch.sigmoid(logits).cpu(), batch["next_fire"].cpu(), batch["prev_fire"].cpu())

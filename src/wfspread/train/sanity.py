@@ -16,9 +16,7 @@ from torch import Tensor, nn
 
 from wfspread.constants import IGNORE_INDEX
 from wfspread.eval.metrics import pr_auc, valid_mask
-from wfspread.train.losses import masked_bce
-
-LossFn = Callable[[Tensor, Tensor], Tensor]
+from wfspread.train.losses import LossFn, masked_bce
 
 
 @dataclass(frozen=True)
