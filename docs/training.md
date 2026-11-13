@@ -29,7 +29,7 @@ run_dir = fit(model, train_loader, val_loader, config, run_name="unet_baseline")
 | Reproducibility | One seed for torch, numpy, Python and loader workers |
 | Precision | float32 by default; logits and loss are always float32 |
 
-Settings and defaults are in `configs/train/default.yaml`; unknown keys are rejected.
+Settings and defaults are in `configs/train/default.yaml`; unknown keys are rejected. A config can start from another with `base: <relative path>` and list only what it changes.
 
 ## Run folder
 
@@ -58,6 +58,19 @@ Every `diagnostics_every_n_steps` optimizer steps (default 50; 0 turns them off)
 | `dice` | `masked_dice`: soft Dice over the valid pixels of the whole batch, since many tiles have no next-day fire | none |
 
 `loss_terms` gives each term a weight, for example `{bce: 0.4, dice: 0.3, focal: 0.3}`. Because the terms are on different scales, `val/loss` is not comparable across losses; compare runs on `val/all/pr_auc`.
+
+### Loss comparison (experiment 2)
+
+Four arms on the U-Net (`configs/model/unet.yaml`), each in `configs/experiment/`. They start from `configs/train/default.yaml` and change only the loss:
+
+| Config | Loss |
+|---|---|
+| `loss-bce.yaml` | BCE |
+| `loss-wbce.yaml` | BCE, fire pixels weighted 3 |
+| `loss-focal.yaml` | Focal, gamma 2, alpha 0.25 |
+| `loss-combo.yaml` | 0.4 weighted BCE (fire 3) + 0.3 Dice + 0.3 focal |
+
+The winner on validation PR-AUC becomes the loss for both models' tuning searches.
 
 ## Sanity checks
 

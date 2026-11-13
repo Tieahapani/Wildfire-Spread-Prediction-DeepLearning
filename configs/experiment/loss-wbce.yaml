@@ -1,0 +1,5 @@
+# Loss comparison on the U-Net (experiment 2), arm 2: BCE with fire pixels weighted 3x,
+# to offset how rare fire pixels are.
+base: ../train/default.yaml
+loss_terms: {bce: 1.0}
+pos_weight: 3.0

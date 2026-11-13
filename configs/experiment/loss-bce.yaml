@@ -1,0 +1,5 @@
+# Loss comparison on the U-Net (experiment 2), arm 1: plain BCE, the reference.
+# Run every arm with configs/model/unet.yaml; only the loss differs between arms.
+base: ../train/default.yaml
+loss_terms: {bce: 1.0}
+pos_weight: 1.0

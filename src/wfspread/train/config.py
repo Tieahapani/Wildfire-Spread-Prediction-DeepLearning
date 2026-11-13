@@ -52,11 +52,25 @@ class TrainConfig:
     def from_yaml(cls, path: Path) -> TrainConfig:
         """Load settings from a YAML file; missing keys keep their defaults.
 
+        A file may start from another with `base: <path relative to this file>`, so an
+        experiment file lists only the settings it changes.
+
         Raises:
             ValueError: If the file has a key this class does not define.
         """
-        values = yaml.safe_load(Path(path).read_text()) or {}
+        values = _read_with_base(Path(path))
         unknown = set(values) - {f.name for f in fields(cls)}
         if unknown:
             raise ValueError(f"unknown training settings in {path}: {sorted(unknown)}")
         return cls(**values)
+
+
+def _read_with_base(path: Path, seen: frozenset[Path] = frozenset()) -> dict:
+    path = path.resolve()
+    if path in seen:
+        raise ValueError(f"config {path} includes itself through `base`")
+    values = yaml.safe_load(path.read_text()) or {}
+    base = values.pop("base", None)
+    if base is None:
+        return values
+    return {**_read_with_base(path.parent / base, seen | {path}), **values}
