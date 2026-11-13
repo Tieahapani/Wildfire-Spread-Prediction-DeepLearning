@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 import torch
 from torch import nn
@@ -60,6 +62,40 @@ def test_repo_default_config_loads():
     from wfspread.train.run import REPO_ROOT
 
     assert TrainConfig.from_yaml(REPO_ROOT / "configs/train/default.yaml") == TrainConfig()
+
+
+def test_config_base_file_supplies_the_other_settings(tmp_path):
+    (tmp_path / "base.yaml").write_text("lr: 0.001\npos_weight: 2.0\n")
+    path = tmp_path / "arm.yaml"
+    path.write_text("base: base.yaml\npos_weight: 3.0\n")
+    config = TrainConfig.from_yaml(path)
+    assert (config.lr, config.pos_weight) == (0.001, 3.0)
+
+
+def test_config_base_cannot_include_itself(tmp_path):
+    path = tmp_path / "loop.yaml"
+    path.write_text("base: loop.yaml\n")
+    with pytest.raises(ValueError, match="includes itself"):
+        TrainConfig.from_yaml(path)
+
+
+LOSS_ARMS = {
+    "loss-bce": ({"bce": 1.0}, 1.0),
+    "loss-wbce": ({"bce": 1.0}, 3.0),
+    "loss-focal": ({"focal": 1.0}, 1.0),
+    "loss-combo": ({"bce": 0.4, "dice": 0.3, "focal": 0.3}, 3.0),
+}
+
+
+@pytest.mark.parametrize("arm", LOSS_ARMS)
+def test_loss_comparison_arms_differ_only_in_the_loss(arm):
+    from wfspread.train.run import REPO_ROOT
+
+    config = TrainConfig.from_yaml(REPO_ROOT / "configs" / "experiment" / f"{arm}.yaml")
+    terms, pos_weight = LOSS_ARMS[arm]
+    assert (config.loss_terms, config.pos_weight) == (terms, pos_weight)
+    loss_settings = {"loss_terms": terms, "pos_weight": pos_weight}
+    assert config == replace(TrainConfig(), **loss_settings)
 
 
 def test_module_trains_with_the_configured_loss():
