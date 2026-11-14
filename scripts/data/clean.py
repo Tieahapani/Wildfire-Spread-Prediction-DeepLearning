@@ -4,13 +4,22 @@ Responsibilities:
 - Remove duplicate training tiles.
 - Remove entirely unknown training tiles.
 - Apply feature-specific missing-value rules.
+- Apply log1p to skewed features.
 - Calculate training clipping thresholds.
 - Generate histograms.
 - Save cleaned data and training statistics.
+- Process the validation split with the training statistics.
+
+Wind direction stays in degrees with NaN where missing: the loader rotates it
+with the image and then converts it to sin and cos.
 
 The original HDF5 files must remain unchanged.
+
+Example:
+    bin/wf python scripts/data/clean.py --splits train val
 """
 
+import argparse
 import hashlib
 import json
 import os
@@ -90,18 +99,35 @@ TILE_SHAPE = (64, 64)
 LOWER_PERCENTILE = 0.1
 UPPER_PERCENTILE = 99.9
 
+ENVIRONMENTAL_FEATURES = tuple(
+    name for name in FEATURE_NAMES if name not in ("FireMask", "PrevFireMask")
+)
+
+# Heavily right-skewed, so log1p before clipping and standardizing.
+LOG_FEATURES = ("pr", "population")
+
+# Circular: 359 and 1 degrees are neighbours, so no clipping or z-score.
+CIRCULAR_FEATURES = ("th",)
+
+# Small negative precipitation is resampling noise and becomes 0. Below this
+# (about 0.002% of training pixels) it is treated as missing.
+PR_NEGATIVE_LIMIT_MM = -1.0
+
+STATISTICS_FILE = "training_statistics.json"
+
 
 # --------------------------------------------------
 # 2. Paths
 # --------------------------------------------------
 
 
-def get_paths():
+def get_paths(output_dir=None):
     """Set input and output directories."""
     data_root = Path(os.environ["WF_DATA"])
 
     input_dir = data_root / "processed" / "ndws"
-    output_dir = data_root / "processed" / "ndws-v1"
+    if output_dir is None:
+        output_dir = data_root / "processed" / "ndws-v1"
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -327,7 +353,21 @@ def apply_missing_rules(features):
 
     cleaned["th"][(cleaned["th"] < 0) | (cleaned["th"] > 360)] = np.nan
 
+    cleaned["erc"][cleaned["erc"] < 0] = np.nan
+
+    pr = cleaned["pr"]
+    pr[pr < PR_NEGATIVE_LIMIT_MM] = np.nan
+    pr[pr < 0] = 0.0
+
     return cleaned
+
+
+def apply_log_transforms(features):
+    """Apply log1p in place to the skewed features; NaN stays NaN."""
+    for name in LOG_FEATURES:
+        features[name] = np.log1p(features[name])
+
+    return features
 
 
 def report_missing_values(features):
@@ -457,8 +497,8 @@ def calculate_preprocessing_statistics(
     """
     statistics = {}
 
-    for name in FEATURE_NAMES:
-        if name in ("FireMask", "PrevFireMask"):
+    for name in ENVIRONMENTAL_FEATURES:
+        if name in CIRCULAR_FEATURES:
             continue
 
         values = features[name].astype(np.float64)
@@ -486,6 +526,7 @@ def calculate_preprocessing_statistics(
             raise ValueError(f"Invalid standard deviation for {name}")
 
         statistics[name] = {
+            "transform": "log1p" if name in LOG_FEATURES else "none",
             "lower": float(lower),
             "upper": float(upper),
             "median": float(median),
@@ -539,7 +580,7 @@ def apply_preprocessing(features, statistics):
 # --------------------------
 
 
-def save_cleaned_data(features, tile_ids, record_indices, output_path):
+def save_cleaned_data(features, tile_ids, record_indices, output_path, split):
     """Save processed features and metadata to an HDF5 file."""
     with h5py.File(output_path, "w") as f:
         feature_group = f.create_group("features")
@@ -552,8 +593,27 @@ def save_cleaned_data(features, tile_ids, record_indices, output_path):
 
         f.attrs["num_records"] = len(tile_ids)
         f.attrs["tile_shape"] = TILE_SHAPE
-        f.attrs["split"] = "train"
+        f.attrs["split"] = split
         f.attrs["feature_names"] = list(features.keys())
+
+
+def check_processed(processed_features):
+    """Check that only wind direction may still be missing, and print z-score moments."""
+    print("\nNORMALIZATION CHECK")
+    print("-------------------")
+
+    for name in ENVIRONMENTAL_FEATURES:
+        values = processed_features[name]
+
+        if name in CIRCULAR_FEATURES:
+            finite = values[np.isfinite(values)]
+            assert finite.min() >= 0, f"{name} below 0 degrees"
+            assert finite.max() <= 360, f"{name} above 360 degrees"
+            print(f"{name}: degrees, missing={np.isnan(values).sum():,}")
+            continue
+
+        assert np.all(np.isfinite(values)), f"Non-finite values remain in {name}"
+        print(f"{name}: mean={values.mean():.4f}, std={values.std():.4f}")
 
 
 # --------------------------
@@ -561,17 +621,13 @@ def save_cleaned_data(features, tile_ids, record_indices, output_path):
 # --------------------------
 
 
-def main():
-    """Run dataset cleaning and calculate training statistics."""
-    input_dir, output_dir = get_paths()
-
-    # Load training data
+def clean_train(input_dir, output_dir):
+    """Clean the training split, then save it and the statistics it defines."""
     features, tile_ids, record_indices = load_split(input_dir / "train.h5")
 
     # Inspect original missing-value encodings
     inspect_minus_one_values(features)
 
-    # Remove duplicates and empty tiles
     (
         cleaned_features,
         cleaned_tile_ids,
@@ -584,66 +640,83 @@ def main():
         record_indices,
     )
 
-    # Verify removal counts
     keep_indices = np.setdiff1d(
         np.arange(len(features["FireMask"])), np.union1d(duplicate_indices, empty_indices)
     )
 
     verify_cleaning(duplicate_indices, empty_indices, keep_indices, len(features["FireMask"]))
+    del features
 
-    # Apply missing-value rules
     cleaned_features = apply_missing_rules(cleaned_features)
-
     report_missing_values(cleaned_features)
+    cleaned_features = apply_log_transforms(cleaned_features)
 
-    # Apply missing-value rules
-    cleaned_features = apply_missing_rules(cleaned_features)
-
-    report_missing_values(cleaned_features)
-
-    # Generate histograms and candidate thresholds
     thresholds = plot_histograms(cleaned_features, output_dir)
-
-    # Calculate training preprocessing statistics
     statistics = calculate_preprocessing_statistics(cleaned_features, thresholds)
 
-    # Apply clipping, imputation and normalization
     processed_features = apply_preprocessing(cleaned_features, statistics)
+    check_processed(processed_features)
 
-    # Verify no environmental NaNs remain
-    environmental_features = [
-        name for name in FEATURE_NAMES if name not in ("FireMask", "PrevFireMask")
-    ]
-
-    for name in environmental_features:
-        assert np.all(np.isfinite(processed_features[name])), f"Non-finite values remain in {name}"
-
-    # Verify normalization
-    print("\nNORMALIZATION CHECK")
-    print("-------------------")
-
-    for name in environmental_features:
-        if name == "th":
-            continue
-
-        values = processed_features[name]
-
-        print(f"{name}: mean={values.mean():.4f}, std={values.std():.4f}")
-
-    # Save preprocessing statistics
-    stats_path = output_dir / "training_statistics.json"
-
+    stats_path = output_dir / STATISTICS_FILE
     stats_path.write_text(json.dumps(statistics, indent=4))
 
-    # Save processed training dataset
     save_cleaned_data(
-        processed_features, cleaned_tile_ids, cleaned_record_indices, output_dir / "train.h5"
+        processed_features,
+        cleaned_tile_ids,
+        cleaned_record_indices,
+        output_dir / "train.h5",
+        "train",
+    )
+    print(f"\nStatistics: {stats_path}")
+
+    return statistics
+
+
+def clean_eval_split(input_dir, output_dir, split, statistics):
+    """Clean a validation or test split with the training statistics.
+
+    No tiles are removed, so every tile is scored and the original order is kept.
+    """
+    features, tile_ids, record_indices = load_split(input_dir / f"{split}.h5")
+
+    cleaned_features = apply_missing_rules(features)
+    report_missing_values(cleaned_features)
+    cleaned_features = apply_log_transforms(cleaned_features)
+
+    processed_features = apply_preprocessing(cleaned_features, statistics)
+    check_processed(processed_features)
+
+    save_cleaned_data(
+        processed_features, tile_ids, record_indices, output_dir / f"{split}.h5", split
     )
 
+
+def main():
+    """Clean the requested splits; statistics always come from the training split."""
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--splits",
+        nargs="+",
+        choices=("train", "val", "test"),
+        default=["train", "val"],
+        help="test only for the final evaluation",
+    )
+    parser.add_argument("--out-dir", type=Path, help="default: $WF_DATA/processed/ndws-v1")
+    args = parser.parse_args()
+
+    input_dir, output_dir = get_paths(args.out_dir)
+
+    if "train" in args.splits:
+        statistics = clean_train(input_dir, output_dir)
+    else:
+        statistics = json.loads((output_dir / STATISTICS_FILE).read_text())
+
+    for split in ("val", "test"):
+        if split in args.splits:
+            clean_eval_split(input_dir, output_dir, split, statistics)
+
     print("\nCLEANING COMPLETE")
-    print("-----------------")
-    print(f"Statistics: {stats_path}")
-    print(f"Dataset: {output_dir / 'train.h5'}")
+    print(f"Output: {output_dir}")
 
 
 if __name__ == "__main__":
