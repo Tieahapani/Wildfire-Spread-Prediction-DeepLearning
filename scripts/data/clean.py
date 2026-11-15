@@ -29,6 +29,15 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 
+from wfspread.data.cleaning import (
+    CIRCULAR_FEATURES,
+    ENVIRONMENTAL_FEATURES,
+    LOG_FEATURES,
+    apply_log_transforms,
+    apply_missing_rules,
+    apply_preprocessing,
+)
+
 EMPTY_TILE_INDICES = [
     60,
     689,
@@ -98,20 +107,6 @@ TILE_SHAPE = (64, 64)
 
 LOWER_PERCENTILE = 0.1
 UPPER_PERCENTILE = 99.9
-
-ENVIRONMENTAL_FEATURES = tuple(
-    name for name in FEATURE_NAMES if name not in ("FireMask", "PrevFireMask")
-)
-
-# Heavily right-skewed, so log1p before clipping and standardizing.
-LOG_FEATURES = ("pr", "population")
-
-# Circular: 359 and 1 degrees are neighbours, so no clipping or z-score.
-CIRCULAR_FEATURES = ("th",)
-
-# Small negative precipitation is resampling noise and becomes 0. Below this
-# (about 0.002% of training pixels) it is treated as missing.
-PR_NEGATIVE_LIMIT_MM = -1.0
 
 STATISTICS_FILE = "training_statistics.json"
 
@@ -309,67 +304,6 @@ def verify_cleaning(duplicate_indices, empty_indices, keep_indices, num_original
 # --------------------------------------------------
 
 
-def apply_missing_rules(features):
-    """Apply feature-specific missing-value rules.
-
-    Environmental missing values become NaN.
-    Fire masks retain -1 for unknown labels.
-    """
-    cleaned = {name: array.astype(np.float32, copy=True) for name, array in features.items()}
-
-    # Convert non-finite environmental values to NaN
-    environmental_features = [
-        name for name in FEATURE_NAMES if name not in ("FireMask", "PrevFireMask")
-    ]
-
-    for name in environmental_features:
-        cleaned[name][~np.isfinite(cleaned[name])] = np.nan
-
-    # Detect shared zero-filled weather pixels
-    shared_zero_mask = (
-        (cleaned["tmmn"] == 0)
-        & (cleaned["tmmx"] == 0)
-        & (cleaned["vs"] == 0)
-        & (cleaned["sph"] == 0)
-        & (cleaned["erc"] == 0)
-        & (cleaned["th"] == 0)
-    )
-
-    weather_features = ["tmmn", "tmmx", "vs", "sph", "erc", "th"]
-
-    for name in weather_features:
-        cleaned[name][shared_zero_mask] = np.nan
-
-    print(f"Shared missing pixels: {shared_zero_mask.sum():,}")
-
-    # Feature-specific validity rules
-    cleaned["vs"][cleaned["vs"] < 0] = np.nan
-
-    cleaned["sph"][cleaned["sph"] < 0] = np.nan
-
-    cleaned["tmmn"][cleaned["tmmn"] <= 200] = np.nan
-
-    cleaned["tmmx"][cleaned["tmmx"] <= 200] = np.nan
-
-    cleaned["th"][(cleaned["th"] < 0) | (cleaned["th"] > 360)] = np.nan
-
-    cleaned["erc"][cleaned["erc"] < 0] = np.nan
-
-    pr = cleaned["pr"]
-    pr[pr < PR_NEGATIVE_LIMIT_MM] = np.nan
-    pr[pr < 0] = 0.0
-
-    return cleaned
-
-
-def apply_log_transforms(features):
-    """Apply log1p in place to the skewed features; NaN stays NaN."""
-    for name in LOG_FEATURES:
-        features[name] = np.log1p(features[name])
-
-    return features
-
-
 def report_missing_values(features):
     """Report NaN counts after applying missing-value rules."""
     print("\nMISSING VALUE REPORT")
@@ -536,43 +470,6 @@ def calculate_preprocessing_statistics(
         }
 
     return statistics
-
-
-def apply_preprocessing(features, statistics):
-    """Apply clipping, median imputation and normalization."""
-    processed = {name: array.astype(np.float32, copy=True) for name, array in features.items()}
-
-    for name, stats in statistics.items():
-        values = processed[name]
-        print(f"\nProcessing: {name}")
-        print(f"Median: {stats['median']}")
-        print(f"Mean: {stats['mean']}")
-        print(f"Std: {stats['std']}")
-        print(f"NaNs before: {np.isnan(values).sum()}")
-        print(f"Infs before: {np.isinf(values).sum()}")
-
-        lower = stats["lower"]
-        upper = stats["upper"]
-        median = stats["median"]
-
-        # 1. Clip valid observations
-        valid = np.isfinite(values)
-
-        values[valid] = np.clip(values[valid], lower, upper)
-
-        # 2. Impute missing values
-        values[~valid] = median
-
-        # Debug missing-value imputation
-        print(f"{name}: NaNs remaining after imputation: {np.isnan(values).sum()}")
-
-        # 3. Normalize
-        processed[name] = (values - stats["mean"]) / stats["std"]
-        print(f"NaNs after normalization: {np.isnan(processed[name]).sum()}")
-
-        print(f"Infs after normalization: {np.isinf(processed[name]).sum()}")
-
-    return processed
 
 
 # --------------------------

@@ -1,14 +1,16 @@
-"""Shared pytest fixtures: dataset locations and fake tiles in the batch format."""
+"""Shared pytest fixtures: dataset locations, fake tiles in the batch format, fake raw NDWS."""
 
 import os
 from collections.abc import Callable
 from pathlib import Path
 
+import numpy as np
 import pytest
 import torch
 from torch import Tensor
 
 from wfspread.constants import CH, IGNORE_INDEX
+from wfspread.data.cleaning import CIRCULAR_FEATURES, ENVIRONMENTAL_FEATURES
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -46,3 +48,47 @@ def fake_tiles() -> Callable[..., dict[str, Tensor]]:
     unknown (-1), so mask handling is exercised too.
     """
     return _fake_tiles
+
+
+def _raw_features(n_tiles: int, seed: int, size: int = 16) -> dict[str, np.ndarray]:
+    rng = np.random.default_rng(seed)
+    features = {
+        name: rng.uniform(1.0, 10.0, (n_tiles, size, size)).astype(np.float32)
+        for name in ENVIRONMENTAL_FEATURES
+    }
+    features["tmmn"] += 270
+    features["tmmx"] += 290
+    features["th"] = rng.uniform(0, 360, (n_tiles, size, size)).astype(np.float32)
+    fire = rng.choice([-1, 0, 1], (n_tiles, size, size), p=[0.05, 0.85, 0.1])
+    features["PrevFireMask"] = fire.astype(np.float32)
+    features["FireMask"] = fire.astype(np.float32)
+    return features
+
+
+def _statistics(features: dict[str, np.ndarray]) -> dict[str, dict[str, float]]:
+    return {
+        name: {
+            "lower": float(np.nanmin(features[name])),
+            "upper": float(np.nanmax(features[name])),
+            "median": float(np.nanmedian(features[name])),
+            "mean": float(np.nanmean(features[name])),
+            "std": float(np.nanstd(features[name])),
+        }
+        for name in ENVIRONMENTAL_FEATURES
+        if name not in CIRCULAR_FEATURES
+    }
+
+
+@pytest.fixture
+def raw_features() -> Callable[..., dict[str, np.ndarray]]:
+    """Builds fake raw NDWS features in their source units, keyed by NDWS name.
+
+    Call it as `raw_features(n_tiles, seed, size=16)`. Fire masks hold -1, 0 and 1.
+    """
+    return _raw_features
+
+
+@pytest.fixture
+def statistics_for() -> Callable[..., dict[str, dict[str, float]]]:
+    """Builds cleaning statistics (clip limits, median, mean, std) from given features."""
+    return _statistics
