@@ -1,0 +1,4 @@
+base: default.yaml
+lr: 1.0e-3
+loss_terms: {bce: 0.4, dice: 0.3, focal: 0.3}
+pos_weight: 3.0
