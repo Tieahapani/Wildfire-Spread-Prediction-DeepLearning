@@ -28,6 +28,9 @@ class NDWSDataset(Dataset):
         split: One of ``"train"``, ``"val"`` or ``"test"``.
         augment: Apply random flips and 90° rotations (training only).
         crop_size: Random square crop side; ``None`` keeps the full 64×64 tile.
+        preload: Read the entire split into memory at init. Uses ~3 GB for
+            training but removes the HDF5 read bottleneck, making epochs much
+            faster.
     """
 
     def __init__(
@@ -36,6 +39,7 @@ class NDWSDataset(Dataset):
         split: str = "train",
         augment: bool = False,
         crop_size: int | None = None,
+        preload: bool = False,
     ):
         if split not in ("train", "val", "test"):
             raise ValueError(f"Invalid split: {split}")
@@ -53,11 +57,16 @@ class NDWSDataset(Dataset):
         self.crop_size = crop_size
         self._file: h5py.File | None = None
         self._pid: int | None = None
+        self._cache: dict[str, np.ndarray] | None = None
+        self._sample_ids: np.ndarray | None = None
 
         with h5py.File(self.path, "r") as f:
             self._len = int(f.attrs["num_records"])
             if not {"FireMask", "PrevFireMask"} <= set(f["features"]):
                 raise ValueError("HDF5 file is missing required fire masks")
+            if preload:
+                self._cache = {name: f["features"][name][:] for name in f["features"]}
+                self._sample_ids = f["record_indices"][:]
 
     def __len__(self) -> int:
         return self._len
@@ -74,9 +83,13 @@ class NDWSDataset(Dataset):
         if index < 0 or index >= self._len:
             raise IndexError(index)
 
-        f = self._get_file()
-        features = {name: f["features"][name][index] for name in f["features"]}
-        sample_id = int(f["record_indices"][index])
+        if self._cache is not None:
+            features = {name: self._cache[name][index] for name in self._cache}
+            sample_id = int(self._sample_ids[index])
+        else:
+            f = self._get_file()
+            features = {name: f["features"][name][index] for name in f["features"]}
+            sample_id = int(f["record_indices"][index])
 
         if self.augment:
             features = transform_tile(
@@ -122,6 +135,7 @@ def create_dataloader(
     num_workers: int = 4,
     crop_size: int | None = None,
     seed: int = 0,
+    preload: bool = False,
 ) -> DataLoader:
     """Create a reproducible NDWS DataLoader.
 
@@ -132,6 +146,7 @@ def create_dataloader(
         num_workers: Parallel data loading workers.
         crop_size: Random square crop side for training; ``None`` uses full tiles.
         seed: Seed for shuffling and augmentation.
+        preload: Load the entire split into memory for faster epochs.
 
     Returns:
         A DataLoader yielding ``Batch`` dicts.
@@ -142,6 +157,7 @@ def create_dataloader(
         split=split,
         augment=training,
         crop_size=crop_size,
+        preload=preload,
     )
     generator = torch.Generator().manual_seed(seed)
     return DataLoader(
