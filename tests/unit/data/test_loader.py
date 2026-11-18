@@ -83,6 +83,33 @@ class TestNDWSDataset:
         assert sample["next_fire"].shape == (32, 32)
 
 
+class TestPreload:
+    """Preloaded dataset returns identical results to on-disk reads."""
+
+    def test_preload_batch_format(self, tiny_data: Path):
+        ds = NDWSDataset(tiny_data, split="val", augment=False, preload=True)
+        sample = ds[0]
+        assert sample["inputs"].shape == (13, 64, 64)
+        assert sample["sample_id"].item() == 100
+        assert sample["next_fire"].dtype == torch.int8
+
+    def test_preload_matches_disk(self, tiny_data: Path):
+        disk = NDWSDataset(tiny_data, split="val", augment=False, preload=False)
+        mem = NDWSDataset(tiny_data, split="val", augment=False, preload=True)
+        for i in range(len(disk)):
+            d, m = disk[i], mem[i]
+            assert torch.equal(d["inputs"], m["inputs"])
+            assert torch.equal(d["next_fire"], m["next_fire"])
+            assert d["sample_id"].item() == m["sample_id"].item()
+
+    def test_preload_dataloader(self, tiny_data: Path):
+        loader = create_dataloader(
+            tiny_data, split="val", batch_size=4, num_workers=0, preload=True
+        )
+        batch = next(iter(loader))
+        check_batch(batch)
+
+
 class TestCreateDataloader:
     """The factory returns working loaders."""
 

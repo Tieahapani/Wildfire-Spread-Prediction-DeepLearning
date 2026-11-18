@@ -24,6 +24,7 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--tag", type=str, default="baseline")
+    parser.add_argument("--preload", action="store_true", help="Load data into memory")
     args = parser.parse_args()
 
     config = TrainConfig.from_yaml(args.config)
@@ -35,6 +36,7 @@ def main() -> None:
         batch_size=args.batch_size,
         num_workers=args.workers,
         seed=config.seed,
+        preload=args.preload,
     )
     val_loader = create_dataloader(
         args.data,
@@ -42,6 +44,7 @@ def main() -> None:
         batch_size=args.batch_size,
         num_workers=args.workers,
         seed=config.seed,
+        preload=args.preload,
     )
     print(f"Train: {len(train_loader.dataset)} tiles, {len(train_loader)} batches")
     print(f"Val:   {len(val_loader.dataset)} tiles, {len(val_loader)} batches")
