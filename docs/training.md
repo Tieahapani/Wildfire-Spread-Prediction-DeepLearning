@@ -72,6 +72,19 @@ Four arms on the U-Net (`configs/model/unet.yaml`), each in `configs/experiment/
 
 The winner on validation PR-AUC becomes the loss for both models' tuning searches.
 
+Two U-Net runs with the same config and seed can differ by about 0.01 validation PR-AUC (GPU kernels are not bitwise deterministic), which is as large as the gaps between arms. So every arm runs with three seeds and is compared on the mean:
+
+```bash
+bin/wf python scripts/train/compare_losses.py            # 4 arms x seeds 0, 1, 2
+```
+
+Runs go to `$WF_RUNS/loss-comparison/`. Each finished run is added to `runs.csv` (best epoch per run), and `summary.md` holds the mean ± standard deviation per arm. Starting the script again skips runs already in `runs.csv`.
+
+**Choosing the winner:**
+1. Rank the arms by mean `val/all/pr_auc`.
+2. If the top arm's lead is smaller than the larger standard deviation of the two, count it as a tie and break the tie on mean `val/spread/f1`.
+3. If that is also within one standard deviation, keep the simpler loss, with plain BCE as the simplest.
+
 ## Sanity checks
 
 Run these on a few real batches before any search; they live in `wfspread.train.sanity`.
