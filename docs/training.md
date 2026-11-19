@@ -20,7 +20,7 @@ run_dir = fit(model, train_loader, val_loader, config, run_name="unet_baseline")
 
 | Part | Choice |
 |---|---|
-| Loss | Weighted sum of masked BCE (optional fire weight `pos_weight`), focal and Dice, set by `loss_terms`; all skip unknown pixels. Default: plain BCE |
+| Loss | Weighted sum of masked BCE (optional fire weight `pos_weight`), focal and Dice, set by `loss_terms`; all skip unknown pixels. Default: BCE with fire pixels weighted 3, the winner of the loss comparison |
 | Optimizer | AdamW; linear warmup, then cosine decay to `min_lr`, updated every step |
 | Gradients | Norm clipped at `grad_clip` |
 | Validation | Predictions for the whole split are scored once per epoch with `wfspread.eval.metrics.evaluate`. F1 and IoU use the best-F1 threshold on validation |
@@ -84,6 +84,17 @@ Runs go to `$WF_RUNS/loss-comparison/`. Each finished run is added to `runs.csv`
 1. Rank the arms by mean `val/all/pr_auc`.
 2. If the top arm's lead is smaller than the larger standard deviation of the two, count it as a tie and break the tie on mean `val/spread/f1`.
 3. If that is also within one standard deviation, keep the simpler loss, with plain BCE as the simplest.
+
+**Result (Nov 18, seeds 0, 1, 2, best validation epoch, mean ± standard deviation):**
+
+| Arm | `val/all/pr_auc` | `val/all/f1` | `val/spread/pr_auc` | `val/spread/f1` |
+|---|---|---|---|---|
+| `loss-wbce` | 0.297 ± 0.009 | 0.367 ± 0.008 | 0.250 ± 0.011 | 0.319 ± 0.009 |
+| `loss-bce` | 0.297 ± 0.004 | 0.359 ± 0.004 | 0.245 ± 0.006 | 0.308 ± 0.005 |
+| `loss-combo` | 0.296 ± 0.005 | 0.360 ± 0.004 | 0.243 ± 0.004 | 0.306 ± 0.003 |
+| `loss-focal` | 0.294 ± 0.002 | 0.359 ± 0.003 | 0.242 ± 0.001 | 0.309 ± 0.003 |
+
+All four tie on PR-AUC. Weighted BCE wins the tie-break on spread F1 by 0.010, just above its standard deviation of 0.009, so the margin is small. Since Nov 19 it is the default in `configs/train/default.yaml`; runs before that date used plain BCE unless their `run.yaml` says otherwise.
 
 ## Sanity checks
 

@@ -4,3 +4,5 @@ base: ../train/default.yaml
 loss_terms: {focal: 1.0}
 focal_gamma: 2.0
 focal_alpha: 0.25
+# Unused without a BCE term; pinned so the arm stays as it was run.
+pos_weight: 1.0
