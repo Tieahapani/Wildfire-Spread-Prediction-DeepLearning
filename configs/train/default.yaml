@@ -9,8 +9,9 @@ weight_decay: 0.01
 warmup_epochs: 2
 min_lr: 1.0e-6
 grad_clip: 1.0
+# Weighted BCE won the loss comparison (docs/training.md, Loss comparison).
 loss_terms: {bce: 1.0}
-pos_weight: 1.0
+pos_weight: 3.0
 # Focal settings from Lin et al. 2017 (best result in their Table 1a).
 focal_gamma: 2.0
 focal_alpha: 0.25

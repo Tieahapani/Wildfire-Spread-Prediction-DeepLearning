@@ -40,7 +40,7 @@ class TrainConfig:
     min_lr: float = 1e-6
     grad_clip: float = 1.0
     loss_terms: dict[str, float] = field(default_factory=lambda: {"bce": 1.0})
-    pos_weight: float = 1.0
+    pos_weight: float = 3.0
     focal_gamma: float = 2.0
     focal_alpha: float = 0.25
     patience: int = 15
