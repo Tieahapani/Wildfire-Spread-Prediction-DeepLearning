@@ -98,6 +98,13 @@ def test_loss_comparison_arms_differ_only_in_the_loss(arm):
     assert config == replace(TrainConfig(), **loss_settings)
 
 
+def test_crop_arm_differs_from_the_default_only_in_crop_size():
+    from wfspread.train.run import REPO_ROOT
+
+    config = TrainConfig.from_yaml(REPO_ROOT / "configs" / "experiment" / "crop-32.yaml")
+    assert config == replace(TrainConfig(), crop_size=32)
+
+
 def test_module_trains_with_the_configured_loss():
     torch.manual_seed(0)
     module = FireModule(_TinyNet(), TrainConfig(loss_terms={"focal": 1.0}))

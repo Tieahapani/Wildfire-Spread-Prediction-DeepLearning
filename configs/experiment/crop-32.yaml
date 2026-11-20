@@ -1,0 +1,5 @@
+# Crop experiment (experiment 3): train on random 32x32 crops of each tile, still
+# scored on full validation tiles. Compared with full-tile training under the same
+# loss (loss-wbce, the default since the loss comparison).
+base: ../train/default.yaml
+crop_size: 32

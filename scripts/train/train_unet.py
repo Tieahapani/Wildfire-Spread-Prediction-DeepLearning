@@ -35,6 +35,7 @@ def main() -> None:
         split="train",
         batch_size=args.batch_size,
         num_workers=args.workers,
+        crop_size=config.crop_size,
         seed=config.seed,
         preload=args.preload,
     )
