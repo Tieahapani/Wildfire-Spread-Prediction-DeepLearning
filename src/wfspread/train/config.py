@@ -26,6 +26,8 @@ class TrainConfig:
         focal_gamma: Focusing strength of the focal term.
         focal_alpha: Weight on fire pixels in the focal term.
         patience: Validation epochs without a better PR-AUC before stopping.
+        crop_size: Side of the random square crop each training tile is cut to, or None
+            for full tiles. Validation always scores full tiles.
         precision: Lightning precision setting, for example "32-true" or "bf16-mixed".
         check_batches: Validate every batch against the batch format; slower, for debugging.
         diagnostics_every_n_steps: Log learning rate, gradient norm and per-layer weight
@@ -44,6 +46,7 @@ class TrainConfig:
     focal_gamma: float = 2.0
     focal_alpha: float = 0.25
     patience: int = 15
+    crop_size: int | None = None
     precision: str = "32-true"
     check_batches: bool = False
     diagnostics_every_n_steps: int = 50

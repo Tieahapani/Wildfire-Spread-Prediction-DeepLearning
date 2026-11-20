@@ -16,6 +16,8 @@ pos_weight: 3.0
 focal_gamma: 2.0
 focal_alpha: 0.25
 patience: 15
+# Full 64x64 training tiles; the crop experiment sets 32.
+crop_size: null
 precision: 32-true
 check_batches: false
 diagnostics_every_n_steps: 50

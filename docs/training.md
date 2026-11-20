@@ -75,10 +75,11 @@ The winner on validation PR-AUC becomes the loss for both models' tuning searche
 Two U-Net runs with the same config and seed can differ by about 0.01 validation PR-AUC (GPU kernels are not bitwise deterministic), which is as large as the gaps between arms. So every arm runs with three seeds and is compared on the mean:
 
 ```bash
-bin/wf python scripts/train/compare_losses.py            # 4 arms x seeds 0, 1, 2
+bin/wf python scripts/train/compare_arms.py \
+    --arms loss-bce loss-wbce loss-focal loss-combo --out "$WF_RUNS/loss-comparison"
 ```
 
-Runs go to `$WF_RUNS/loss-comparison/`. Each finished run is added to `runs.csv` (best epoch per run), and `summary.md` holds the mean ± standard deviation per arm. Starting the script again skips runs already in `runs.csv`.
+Seeds 0, 1 and 2 are the default. Each finished run is added to `runs.csv` (best epoch per run), and `summary.md` holds the mean ± standard deviation per arm. Starting the script again skips runs already in `runs.csv`.
 
 **Choosing the winner:**
 1. Rank the arms by mean `val/all/pr_auc`.
@@ -95,6 +96,23 @@ Runs go to `$WF_RUNS/loss-comparison/`. Each finished run is added to `runs.csv`
 | `loss-focal` | 0.294 ± 0.002 | 0.359 ± 0.003 | 0.242 ± 0.001 | 0.309 ± 0.003 |
 
 All four tie on PR-AUC. Weighted BCE wins the tie-break on spread F1 by 0.010, just above its standard deviation of 0.009, so the margin is small. Since Nov 19 it is the default in `configs/train/default.yaml`; runs before that date used plain BCE unless their `run.yaml` says otherwise.
+
+### Crop experiment (experiment 3)
+
+Does training on random 32 × 32 crops of each tile, instead of the full 64 × 64 tile, help the U-Net? Crops show the model more varied fire positions and edges per epoch, but less context around each pixel. Validation always scores full tiles.
+
+| Config | Training input |
+|---|---|
+| `loss-wbce.yaml` | Full tiles; its three runs from the loss comparison are reused |
+| `crop-32.yaml` | Random 32 × 32 crop per tile, re-drawn every epoch (`crop_size: 32`) |
+
+Both use the default loss (weighted BCE) and differ only in `crop_size`. An epoch of crops covers a quarter of the training pixels, so crop runs take more, shorter epochs.
+
+```bash
+bin/wf python scripts/train/compare_arms.py --arms crop-32 --out "$WF_RUNS/crop-comparison"
+```
+
+Crops win only if their mean `val/all/pr_auc` beats full tiles by more than the larger standard deviation of the two. Otherwise full tiles stay, as the simpler setup.
 
 ## Sanity checks
 

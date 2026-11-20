@@ -1,11 +1,12 @@
-"""Train the U-Net once per loss arm and seed, then compare the arms on validation.
+"""Train the U-Net once per experiment arm and seed, then compare the arms on validation.
 
 Each finished run is added to `runs.csv` in the output folder straight away, so an
 interrupted comparison picks up where it stopped when started again.
 
 Examples:
-    bin/wf python scripts/train/compare_losses.py
-    bin/wf python scripts/train/compare_losses.py --seeds 0 1 2 3 --out "$WF_RUNS/loss-4seeds"
+    bin/wf python scripts/train/compare_arms.py --arms loss-bce loss-wbce loss-focal \
+        loss-combo --out "$WF_RUNS/loss-comparison"
+    bin/wf python scripts/train/compare_arms.py --arms crop-32 --out "$WF_RUNS/crop-comparison"
 """
 
 from __future__ import annotations
@@ -26,20 +27,18 @@ from wfspread.train.run import fit
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXPERIMENT_DIR = REPO_ROOT / "configs" / "experiment"
-ARMS = ("loss-bce", "loss-wbce", "loss-focal", "loss-combo")
 RUN_FIELDS = ("arm", "seed", "run_dir", "epoch", "epochs", *REPORTED_METRICS)
 
 
 def main() -> None:
     """Run every missing arm and seed, then print and save the comparison table."""
     data_root = Path(os.environ.get("WF_DATA", REPO_ROOT / "data"))
-    runs_root = Path(os.environ.get("WF_RUNS", REPO_ROOT / "runs"))
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--arms", nargs="+", default=list(ARMS), help="configs/experiment names")
+    parser.add_argument("--arms", nargs="+", required=True, help="configs/experiment names")
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     parser.add_argument("--model", type=Path, default=REPO_ROOT / "configs/model/unet.yaml")
     parser.add_argument("--data", type=Path, default=data_root / "processed" / "ndws-v1")
-    parser.add_argument("--out", type=Path, default=runs_root / "loss-comparison")
+    parser.add_argument("--out", type=Path, required=True, help="folder for runs and summary")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()
@@ -51,17 +50,20 @@ def main() -> None:
     todo = [(arm, seed) for arm in args.arms for seed in args.seeds if (arm, seed) not in done]
     print(f"{len(done)} runs already in {runs_csv}, {len(todo)} to train")
 
-    if todo:
-        # Read each split once and share it across runs; loading train takes seconds.
-        train_set = NDWSDataset(args.data, "train", augment=True, preload=True)
-        val_set = NDWSDataset(args.data, "val", preload=True)
+    # Read each split once and share it across runs; loading train takes seconds.
+    train_sets: dict[int | None, NDWSDataset] = {}
+    val_set = NDWSDataset(args.data, "val", preload=True) if todo else None
     for arm, seed in todo:
         config = dataclasses.replace(
             TrainConfig.from_yaml(EXPERIMENT_DIR / f"{arm}.yaml"), seed=seed
         )
+        if config.crop_size not in train_sets:
+            train_sets[config.crop_size] = NDWSDataset(
+                args.data, "train", augment=True, crop_size=config.crop_size, preload=True
+            )
         run_dir = fit(
             load_model(args.model),
-            _loader(train_set, args, train=True),
+            _loader(train_sets[config.crop_size], args, train=True),
             _loader(val_set, args, train=False),
             config,
             run_name=f"unet_{arm}-s{seed}",
