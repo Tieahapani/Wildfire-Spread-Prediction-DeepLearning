@@ -1,7 +1,0 @@
-# Same as unet-optuna but without the prev_fire input channel (12 channels).
-name: unet
-args:
-  in_ch: 12
-  enc_channels: [48, 96, 192, 384]
-  bottleneck_ch: 128
-  dropout: 0.4
