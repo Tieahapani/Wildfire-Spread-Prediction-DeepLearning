@@ -1,0 +1,5 @@
+# Final U-Net: best Optuna settings with weighted BCE.
+base: ../train/default.yaml
+lr: 5.17e-4
+loss_terms: {bce: 1.0}
+pos_weight: 3.0
