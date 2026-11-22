@@ -1,0 +1,40 @@
+# Final evaluation
+
+`scripts/eval/final_eval.py` scores the final models listed in `configs/eval/final.yaml` and writes the numbers for the results table.
+
+## What it reports
+
+For every model, each run (one per seed) is scored at its own decision threshold, chosen for best F1 on the **validation** split and then applied unchanged to the scored split. Persistence (tomorrow's fire is today's fire) needs no training and is scored the same way.
+
+| Output | Meaning |
+|---|---|
+| mean ± std | Spread over the seeds: how much training randomness moves the score |
+| 95% CI | Tile bootstrap of the seed-mean PR-AUC (1,000 resamples): how much the score depends on which tiles were sampled |
+| Paired comparison | Bootstrap of the difference between two models on the same resampled tiles, with a one-sided p-value for "A is better" |
+
+Tiles are resampled whole, never pixels, because pixels in a tile are strongly correlated. See `wfspread.eval.metrics.bootstrap_ci` and `paired_bootstrap`.
+
+Results go to `$WF_RUNS/final-eval/<split>/`: `per_run.csv`, `summary.md` and `results.json`.
+
+## Running
+
+During development, score validation only:
+
+```bash
+bin/wf python scripts/eval/final_eval.py
+```
+
+## The test run, once, at the freeze
+
+The test split is scored once, after every final model is listed in the manifest and the team has agreed on it. The script refuses to score test without `--final-test` or when test results already exist.
+
+```bash
+bin/wf python scripts/data/clean.py --splits test        # clean test with training statistics
+bin/wf python scripts/eval/final_eval.py --split test --final-test
+```
+
+Cleaning the test split only applies the saved training statistics; no number from it is looked at before the run above.
+
+## Adding a model
+
+Add an entry under `models` with its model config and one run folder per seed, relative to `$WF_RUNS`. An ablation that hides input channels lists them in `drop_channels`; the model is then built with fewer input channels and wrapped in `wfspread.models.wrappers.ChannelSubset`, matching how it was trained. A model that is not a trained network needs its own `kind`.
