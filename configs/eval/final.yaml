@@ -1,0 +1,34 @@
+# Models in the final evaluation (scripts/eval/final_eval.py). Model configs are
+# relative to this file; runs are folders under $WF_RUNS, one per seed. The MLP and
+# logistic regression are added here once their final runs exist.
+models:
+  persistence:
+    kind: persistence
+  unet-small:
+    # Default U-Net with weighted BCE, from the loss comparison.
+    model: ../model/unet.yaml
+    runs:
+      - loss-comparison/20261118-2032_unet_loss-wbce-s0
+      - loss-comparison/20261118-2039_unet_loss-wbce-s1
+      - loss-comparison/20261118-2048_unet_loss-wbce-s2
+  unet-tuned:
+    # Best weighted-BCE Optuna trial.
+    model: ../model/unet-optuna.yaml
+    runs:
+      - final-unet/20261120-2101_unet_final-unet-s0
+      - final-unet/20261120-2111_unet_final-unet-s1
+      - final-unet/20261120-2126_unet_final-unet-s2
+  unet-tuned-no-prev-fire:
+    # Ablation: the tuned U-Net without today's fire mask.
+    model: ../model/unet-optuna.yaml
+    drop_channels: [prev_fire]
+    runs:
+      - final-unet/20261120-2145_unet_final-unet-nofire-s0
+      - final-unet/20261120-2158_unet_final-unet-nofire-s1
+      - final-unet/20261120-2216_unet_final-unet-nofire-s2
+
+# Paired bootstrap on the same tiles: first model minus second.
+comparisons:
+  - [unet-tuned, persistence]
+  - [unet-tuned, unet-small]
+  - [unet-tuned, unet-tuned-no-prev-fire]
