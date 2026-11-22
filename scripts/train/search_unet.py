@@ -35,9 +35,10 @@ def objective(trial: optuna.Trial, args: argparse.Namespace) -> float:
     config = TrainConfig(
         seed=0,
         lr=lr,
-        max_epochs=50,
+        max_epochs=40,
         patience=10,
         loss_terms={"bce": 1.0},
+        pos_weight=3.0,
         diagnostics_every_n_steps=0,
     )
 
@@ -106,9 +107,9 @@ def main() -> None:
     args = parser.parse_args()
 
     study = optuna.create_study(
-        study_name="unet-search",
+        study_name="unet-search-wbce",
         direction="maximize",
-        storage=f"sqlite:///{args.runs / 'unet_search.db'}",
+        storage=f"sqlite:///{args.runs / 'unet_search_wbce.db'}",
         load_if_exists=True,
     )
     study.optimize(lambda trial: objective(trial, args), n_trials=args.n_trials)
