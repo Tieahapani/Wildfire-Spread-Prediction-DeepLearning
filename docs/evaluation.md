@@ -16,6 +16,11 @@ Tiles are resampled whole, never pixels, because pixels in a tile are strongly c
 
 Results go to `$WF_RUNS/final-eval/<split>/`: `per_run.csv`, `summary.md` and `results.json`.
 
+## Reading the results
+
+- **Validation scores of tuned models are slightly optimistic.** The Optuna search picked its settings by validation PR-AUC, and the final runs are scored on the same validation tiles, so part of any lead may be luck in that choice. The test split, which no choice has seen, gives the unbiased number. Report validation and test side by side.
+- **Error analysis groups describe where errors happen, not what can be predicted.** Groups such as fire size or growing versus shrinking fires (`scripts/eval/error_analysis_unet.py`) are defined with the day-t+1 fire mask, which a model never has. They show which kinds of tiles the model gets wrong; they are not a way to flag hard tiles in advance.
+
 ## Running
 
 During development, score validation only:
