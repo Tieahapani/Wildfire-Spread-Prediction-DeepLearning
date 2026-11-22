@@ -1,4 +1,6 @@
-# Final U-Net: best Optuna settings with weighted BCE.
+# Final U-Net: best Optuna settings with weighted BCE (scripts/train/final_unet.py).
+# The no-fire-mask ablation trains with these same settings; only its model input
+# differs (prev_fire dropped), so it has no config of its own.
 base: ../train/default.yaml
 lr: 5.17e-4
 loss_terms: {bce: 1.0}

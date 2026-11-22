@@ -20,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 import torch
@@ -29,6 +30,7 @@ from torch.utils.data import DataLoader
 
 from wfspread.constants import FIRE, IGNORE_INDEX
 from wfspread.data.loader import NDWSDataset
+from wfspread.eval.final import ModelSpec, best_checkpoint, build_scored_model
 from wfspread.eval.metrics import (
     best_f1_threshold,
     pr_auc,
@@ -36,45 +38,24 @@ from wfspread.eval.metrics import (
     threshold_scores,
     valid_mask,
 )
-from wfspread.models.unet import UNet
-from wfspread.train.config import TrainConfig
-from wfspread.train.module import FireModule
 
-RUNS_DIR = Path("/srv/sfsu_srv/wf-spread/runs/final-unet")
-DATA_DIR = Path("/srv/sfsu_srv/wf-spread/data/processed/ndws-v1")
-
-BEST_ENC = [48, 96, 192, 384]
-BEST_BOTTLENECK = 128
-BEST_DROPOUT = 0.4
+REPO_ROOT = Path(__file__).resolve().parents[2]
+RUNS_DIR = Path(os.environ.get("WF_RUNS", REPO_ROOT / "runs")) / "final-unet"
+DATA_DIR = Path(os.environ.get("WF_DATA", REPO_ROOT / "data")) / "processed" / "ndws-v1"
+MODEL_CONFIG = REPO_ROOT / "configs" / "model" / "unet-optuna.yaml"
 
 
-def load_model(run_dir: Path, nofire: bool = False) -> FireModule:
-    """Load the best checkpoint from a run directory."""
-    ckpt = sorted(run_dir.glob("checkpoints/best-*.ckpt"))[-1]
-    in_ch = 12 if nofire else 13
-    model = UNet(
-        in_ch=in_ch, enc_channels=BEST_ENC, bottleneck_ch=BEST_BOTTLENECK, dropout=BEST_DROPOUT
+def load_model(run_dir: Path, nofire: bool = False) -> torch.nn.Module:
+    """The best-validation checkpoint of a final run, in eval mode."""
+    spec = ModelSpec(
+        "final-unet", model_config=MODEL_CONFIG, drop_channels=("prev_fire",) if nofire else ()
     )
-    if nofire:
-
-        class DropPrevFire(torch.nn.Module):
-            def __init__(self, m):
-                super().__init__()
-                self.model = m
-
-            def forward(self, x):
-                return self.model(x[:, :-1])
-
-        model = DropPrevFire(model)
-    config = TrainConfig(seed=0, lr=5.17e-4, loss_terms={"bce": 1.0}, pos_weight=3.0)
-    module = FireModule.load_from_checkpoint(ckpt, model=model, config=config, map_location="cpu")
-    module.eval()
-    return module
+    return build_scored_model(spec, best_checkpoint(run_dir))
 
 
 @torch.no_grad()
 def collect_predictions(
-    module: FireModule, loader: DataLoader, device: torch.device
+    module: torch.nn.Module, loader: DataLoader, device: torch.device
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     """Run inference and return (probs, next_fire, prev_fire, sample_ids) on CPU."""
     module = module.to(device)
@@ -185,6 +166,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--nofire", action="store_true", help="Analyze the no-fire-mask model")
     parser.add_argument("--data", type=Path, default=DATA_DIR)
+    parser.add_argument("--out", type=Path, default=RUNS_DIR, help="folder for the report")
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
 
@@ -390,7 +372,7 @@ def main() -> None:
 
     # Write report
     report = "\n".join(sections)
-    out_path = RUNS_DIR / f"error_analysis_{arm}_s{args.seed}.md"
+    out_path = args.out / f"error_analysis_{arm}_s{args.seed}.md"
     out_path.write_text(report)
     print(f"\nReport saved to {out_path}")
     print("\n" + report)
