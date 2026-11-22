@@ -12,66 +12,45 @@ from __future__ import annotations
 
 import argparse
 import csv
+import dataclasses
+import os
 from pathlib import Path
 
-import torch
+import yaml
 from torch import nn
 from torch.utils.data import DataLoader
 
 from wfspread.data.loader import NDWSDataset
-from wfspread.models.unet import UNet
+from wfspread.models.registry import build_model
+from wfspread.models.wrappers import ChannelSubset
 from wfspread.train.config import TrainConfig
 from wfspread.train.results import REPORTED_METRICS, best_validation, summarize
 from wfspread.train.run import fit
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DATA = Path("/srv/sfsu_srv/wf-spread/data/processed/ndws-v1")
-DEFAULT_RUNS = Path("/srv/sfsu_srv/wf-spread/runs/final-unet")
+DEFAULT_DATA = Path(os.environ.get("WF_DATA", REPO_ROOT / "data")) / "processed" / "ndws-v1"
+DEFAULT_RUNS = Path(os.environ.get("WF_RUNS", REPO_ROOT / "runs")) / "final-unet"
 
-# Best Optuna trial 13 settings.
-BEST_ENC = [48, 96, 192, 384]
-BEST_BOTTLENECK = 128
-BEST_DROPOUT = 0.4
-BEST_LR = 5.17e-4
+# Best weighted-BCE Optuna trial: model and training settings.
+MODEL_CONFIG = REPO_ROOT / "configs" / "model" / "unet-optuna.yaml"
+TRAIN_CONFIG = REPO_ROOT / "configs" / "experiment" / "final-unet.yaml"
 
 RUN_FIELDS = ("arm", "seed", "run_dir", "epoch", "epochs", *REPORTED_METRICS)
 
 
-class DropPrevFire(nn.Module):
-    """Wraps a model to drop the last input channel (prev_fire) before forward."""
-
-    def __init__(self, model: nn.Module):
-        super().__init__()
-        self.model = model
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Drop the last channel and forward."""
-        return self.model(x[:, :-1])
-
-
 def make_config(seed: int) -> TrainConfig:
-    """Training config from the best Optuna trial."""
-    return TrainConfig(
-        seed=seed,
-        lr=BEST_LR,
-        loss_terms={"bce": 1.0},
-        pos_weight=3.0,
-        patience=15,
-    )
+    """Training settings of the final runs, for one seed."""
+    return dataclasses.replace(TrainConfig.from_yaml(TRAIN_CONFIG), seed=seed)
 
 
 def make_model(nofire: bool = False) -> nn.Module:
-    """Build the best Optuna U-Net, optionally wrapped to drop prev_fire."""
-    in_ch = 12 if nofire else 13
-    model = UNet(
-        in_ch=in_ch,
-        enc_channels=BEST_ENC,
-        bottleneck_ch=BEST_BOTTLENECK,
-        dropout=BEST_DROPOUT,
-    )
+    """The best Optuna U-Net; without today's fire mask, it never sees prev_fire."""
+    values = yaml.safe_load(MODEL_CONFIG.read_text())
+    args = dict(values["args"])
     if nofire:
-        model = DropPrevFire(model)
-    return model
+        args["in_ch"] -= 1
+        return ChannelSubset(build_model(values["name"], **args), ["prev_fire"])
+    return build_model(values["name"], **args)
 
 
 def main() -> None:
@@ -142,7 +121,7 @@ def main() -> None:
         run = {"arm": arm, "seed": seed, "run_dir": run_dir.name, **best_validation(run_dir)}
         _append_run(runs_csv, run)
         runs.append(run)
-        print(f"=== {arm} seed={seed}: PR-AUC={run.get('pr_auc', '?')} ===\n")
+        print(f"=== {arm} seed={seed}: PR-AUC={run['val/all/pr_auc']:.4f} ===\n")
 
     if runs:
         rows = summarize(runs, group_by="arm")

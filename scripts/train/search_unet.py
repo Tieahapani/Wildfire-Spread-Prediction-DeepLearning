@@ -7,6 +7,7 @@ Each trial trains with early stopping and reports the best validation PR-AUC.
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 import optuna
@@ -18,8 +19,8 @@ from wfspread.train.config import TrainConfig
 from wfspread.train.run import fit
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DATA = Path("/srv/sfsu_srv/wf-spread/data/processed/ndws-v1")
-DEFAULT_RUNS = Path("/srv/sfsu_srv/wf-spread/runs")
+DEFAULT_DATA = Path(os.environ.get("WF_DATA", REPO_ROOT / "data")) / "processed" / "ndws-v1"
+DEFAULT_RUNS = Path(os.environ.get("WF_RUNS", REPO_ROOT / "runs"))
 
 
 def objective(trial: optuna.Trial, args: argparse.Namespace) -> float:
