@@ -1,11 +1,18 @@
 # Models in the final evaluation (scripts/eval/final_eval.py). Model configs are
-# relative to this file; runs are folders under $WF_RUNS, one per seed. The MLP and
-# logistic regression are added here once their final runs exist.
+# relative to this file; runs are folders under $WF_RUNS, one per seed. Logistic
+# regression is added here once its final runs exist.
 models:
   persistence:
     kind: persistence
+  mlp:
+    # 3x3 MLP, same training settings as the U-Net, not tuned.
+    model: ../model/mlp.yaml
+    runs:
+      - final-mlp/20261123-0851_mlp_loss-wbce-s0
+      - final-mlp/20261123-0858_mlp_loss-wbce-s1
+      - final-mlp/20261123-0905_mlp_loss-wbce-s2
   unet-small:
-    # Default U-Net with weighted BCE, from the loss comparison.
+    # The final U-Net: default U-Net with weighted BCE, from the loss comparison.
     model: ../model/unet.yaml
     runs:
       - loss-comparison/20261118-2032_unet_loss-wbce-s0
@@ -29,6 +36,8 @@ models:
 
 # Paired bootstrap on the same tiles: first model minus second.
 comparisons:
-  - [unet-tuned, persistence]
+  - [unet-small, mlp]
+  - [unet-small, persistence]
+  - [mlp, persistence]
   - [unet-tuned, unet-small]
   - [unet-tuned, unet-tuned-no-prev-fire]
