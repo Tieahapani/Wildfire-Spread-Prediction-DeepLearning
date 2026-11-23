@@ -1,4 +1,4 @@
-"""Train the U-Net once per experiment arm and seed, then compare the arms on validation.
+"""Train a model once per experiment arm and seed, then compare the arms on validation.
 
 Each finished run is added to `runs.csv` in the output folder straight away, so an
 interrupted comparison picks up where it stopped when started again.
@@ -7,6 +7,8 @@ Examples:
     bin/wf python scripts/train/compare_arms.py --arms loss-bce loss-wbce loss-focal \
         loss-combo --out "$WF_RUNS/loss-comparison"
     bin/wf python scripts/train/compare_arms.py --arms crop-32 --out "$WF_RUNS/crop-comparison"
+    bin/wf python scripts/train/compare_arms.py --arms loss-wbce \
+        --model configs/model/mlp.yaml --out "$WF_RUNS/final-mlp"
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ import dataclasses
 import os
 from pathlib import Path
 
+import yaml
 from torch.utils.data import DataLoader
 
 from wfspread.data.loader import NDWSDataset
@@ -43,6 +46,7 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()
 
+    model_name = yaml.safe_load(args.model.read_text())["name"]
     args.out.mkdir(parents=True, exist_ok=True)
     runs_csv = args.out / "runs.csv"
     runs = _read_runs(runs_csv)
@@ -66,7 +70,7 @@ def main() -> None:
             _loader(train_sets[config.crop_size], args, train=True),
             _loader(val_set, args, train=False),
             config,
-            run_name=f"unet_{arm}-s{seed}",
+            run_name=f"{model_name}_{arm}-s{seed}",
             runs_dir=args.out,
         )
         run = {"arm": arm, "seed": seed, "run_dir": run_dir.name, **best_validation(run_dir)}

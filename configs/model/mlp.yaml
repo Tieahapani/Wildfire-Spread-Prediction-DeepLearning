@@ -1,0 +1,9 @@
+# MLP baseline: each pixel's 3x3 neighborhood (117 features), three hidden layers
+# of 128, about 48K parameters. Same training settings as the U-Net, not tuned.
+name: mlp
+args:
+  in_ch: 13
+  hidden: 128
+  layers: 3
+  kernel_size: 3
+  dropout: 0.1
