@@ -1,7 +1,7 @@
 <h1 align="center">wf-spread</h1>
 
 <p align="center">
-  <b>Next-day wildfire spread prediction with the Galileo remote-sensing foundation model</b>
+  <b>Next-day wildfire spread prediction: how much does spatial context help?</b>
 </p>
 
 <p align="center">
@@ -18,14 +18,13 @@
 
 ## About
 
-wf-spread fine-tunes [Galileo](https://github.com/nasaharvest/galileo), a pretrained Earth-observation encoder, to predict where an active fire will burn tomorrow. Each prediction is a per-pixel fire map for a 64 × 64 km tile.
+wf-spread predicts where an active fire will burn tomorrow, and compares models that see more and more of the area around each pixel. Each prediction is a per-pixel fire map for a 64 × 64 km tile.
 
 - **Task:** segmentation on the Next Day Wildfire Spread (NDWS) dataset.
-- **Models:** Galileo, fine-tuned three ways (frozen, LoRA, full), against logistic regression, random forest, MLP and U-Net baselines.
+- **Models:** persistence (tomorrow's fire is today's fire), logistic regression and an MLP on each pixel's 3 × 3 neighborhood, and a U-Net on the whole tile.
 - **Evaluation:**
   - PR-AUC on all pixels, and separately on newly burned pixels only.
   - Bootstrap confidence intervals and paired significance tests.
-- **Out-of-time test:** the 2021 California fires.
 
 ## Getting started
 
