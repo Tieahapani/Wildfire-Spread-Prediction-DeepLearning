@@ -123,6 +123,24 @@ Crops win only if their mean `val/all/pr_auc` beats full tiles by more than the 
 
 Crops lose on every metric, by far more than the seed noise, so training stays on full tiles. The crop runs were not cut short: early stopping ended them after 16 epochs without a better validation PR-AUC. The cause was not tested; a likely one is lost context, since a 32 × 32 crop removes much of the area around each pixel that a full tile shows.
 
+### Final MLP
+
+The MLP (`configs/model/mlp.yaml`, 48K parameters) sees each pixel's 3 × 3 neighborhood and nothing wider. It trains with exactly the U-Net's settings (`loss-wbce`, full tiles) and was not tuned, so the two models differ only in how much of the tile they see.
+
+```bash
+bin/wf python scripts/train/compare_arms.py --arms loss-wbce \
+    --model configs/model/mlp.yaml --out "$WF_RUNS/final-mlp"
+```
+
+**Result (Nov 23, seeds 0, 1, 2, best validation epoch, mean ± standard deviation):**
+
+| Model | `val/all/pr_auc` | `val/all/f1` | `val/spread/pr_auc` | `val/spread/f1` |
+|---|---|---|---|---|
+| MLP 3 × 3 | 0.149 ± 0.000 | 0.284 ± 0.001 | 0.077 ± 0.001 | 0.190 ± 0.003 |
+| U-Net (`loss-wbce`) | 0.297 ± 0.009 | 0.367 ± 0.008 | 0.250 ± 0.011 | 0.319 ± 0.009 |
+
+Early stopping ended the MLP runs after 29–35 epochs, with the best epoch between 13 and 19. The comparison with persistence and the paired tests are in [`evaluation.md`](evaluation.md).
+
 ## Sanity checks
 
 Run these on a few real batches before any search; they live in `wfspread.train.sanity`.
