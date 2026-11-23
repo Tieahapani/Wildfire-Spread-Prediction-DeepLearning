@@ -8,9 +8,11 @@ from pathlib import Path
 import yaml
 from torch import nn
 
+from wfspread.models.mlp import PixelMLP
 from wfspread.models.unet import UNet
 
 MODELS: dict[str, type[nn.Module]] = {
+    "mlp": PixelMLP,
     "unet": UNet,
 }
 
