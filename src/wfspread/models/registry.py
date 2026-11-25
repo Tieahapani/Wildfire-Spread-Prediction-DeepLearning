@@ -8,10 +8,12 @@ from pathlib import Path
 import yaml
 from torch import nn
 
+from wfspread.models.logreg import LogisticRegression
 from wfspread.models.mlp import PixelMLP
 from wfspread.models.unet import UNet
 
 MODELS: dict[str, type[nn.Module]] = {
+    "logreg": LogisticRegression,
     "mlp": PixelMLP,
     "unet": UNet,
 }

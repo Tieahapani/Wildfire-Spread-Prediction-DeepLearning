@@ -1,0 +1,7 @@
+# Logistic regression on each pixel and its 8 neighbors (117 features, 118
+# parameters with the bias), as in Huot et al. 2022. Same training settings as the
+# MLP and U-Net.
+name: logreg
+args:
+  in_ch: 13
+  kernel_size: 3
