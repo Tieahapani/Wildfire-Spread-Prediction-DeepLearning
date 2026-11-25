@@ -1,6 +1,7 @@
 import pytest
 import torch
 
+from wfspread.constants import IGNORE_INDEX
 from wfspread.eval.final import (
     PERSISTENCE,
     ModelSpec,
@@ -10,6 +11,7 @@ from wfspread.eval.final import (
     read_manifest,
     seed_mean_pr_auc,
     validation_thresholds,
+    without_border,
 )
 from wfspread.eval.metrics import pr_auc
 from wfspread.models.unet import UNet
@@ -97,3 +99,13 @@ def test_manifest_resolves_paths_and_checks_comparisons(tmp_path):
     (tmp_path / "bad.yaml").write_text("models:\n  unet: {}\ncomparisons:\n  - [unet, mlp]\n")
     with pytest.raises(ValueError, match="unlisted"):
         read_manifest(tmp_path / "bad.yaml", tmp_path)
+
+
+def test_without_border_marks_only_the_edge_unknown():
+    labels = torch.ones(2, 5, 5, dtype=torch.int8)
+    out = without_border(labels)
+    assert (out[:, 1:-1, 1:-1] == 1).all()
+    assert (out[:, 0, :] == IGNORE_INDEX).all()
+    assert (out[:, :, -1] == IGNORE_INDEX).all()
+    assert int((out == IGNORE_INDEX).sum()) == 2 * 16
+    assert (labels == 1).all()

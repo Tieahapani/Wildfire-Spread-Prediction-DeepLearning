@@ -7,6 +7,7 @@ and only if no test results exist yet: run it once, at the experiment freeze.
 Examples:
     bin/wf python scripts/eval/final_eval.py                       # validation
     bin/wf python scripts/eval/final_eval.py --split test --final-test
+    bin/wf python scripts/eval/final_eval.py --exclude-border  # as Huot et al. 2022
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ from wfspread.eval.final import (
     score_runs,
     stack_runs,
     validation_thresholds,
+    without_border,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -51,10 +53,15 @@ def main() -> None:
     parser.add_argument("--data", type=Path, default=data_root / "processed" / "ndws-v1")
     parser.add_argument("--out", type=Path, default=runs_root / "final-eval")
     parser.add_argument("--n-resamples", type=int, default=1000)
+    parser.add_argument(
+        "--exclude-border",
+        action="store_true",
+        help="score without the 1-pixel tile border, to compare with Huot et al. 2022",
+    )
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
 
-    out = args.out / args.split
+    out = args.out / (f"{args.split}-no-border" if args.exclude_border else args.split)
     if args.split == "test":
         if not args.final_test:
             parser.error("scoring test needs --final-test; run it once, at the freeze")
@@ -69,6 +76,8 @@ def main() -> None:
 
     _, val_labels, _ = collect(None, val_set, device)
     _, labels, prev_fire = collect(None, scored_set, device)
+    if args.exclude_border:
+        val_labels, labels = without_border(val_labels), without_border(labels)
     predictions: dict[str, Predictions] = {}
     per_run_rows = []
     for spec in specs:
@@ -100,11 +109,13 @@ def main() -> None:
 
     _write_csv(out / "per_run.csv", per_run_rows)
     summary = _summary_table(per_run_rows, intervals) + "\n\n" + _comparison_table(paired)
-    (out / "summary.md").write_text(f"# Final evaluation on {args.split}\n\n{summary}\n")
+    title = f"{args.split}, 1-pixel border excluded" if args.exclude_border else args.split
+    (out / "summary.md").write_text(f"# Final evaluation on {title}\n\n{summary}\n")
     (out / "results.json").write_text(
         json.dumps(
             {
                 "split": args.split,
+                "exclude_border": args.exclude_border,
                 "n_resamples": args.n_resamples,
                 "per_run": per_run_rows,
                 "intervals": {

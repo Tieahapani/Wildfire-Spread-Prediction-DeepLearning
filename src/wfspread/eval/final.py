@@ -18,7 +18,7 @@ import yaml
 from torch import Tensor, nn
 from torch.utils.data import DataLoader, Dataset
 
-from wfspread.constants import FIRE, NDWS_CHANNELS
+from wfspread.constants import FIRE, IGNORE_INDEX, NDWS_CHANNELS
 from wfspread.eval.metrics import (
     ConfidenceInterval,
     PairedComparison,
@@ -213,3 +213,15 @@ def compare(
 def stack_runs(per_run: Sequence[Tensor]) -> Tensor:
     """(B, H, W) probabilities of S runs as (B, S, H, W)."""
     return torch.stack(list(per_run), dim=1)
+
+
+def without_border(labels: Tensor) -> Tensor:
+    """Next-day masks (B, H, W) with the 1-pixel tile border marked unknown.
+
+    Metrics skip unknown pixels, so this scores the interior only, as Huot et al.
+    2022 did for logistic regression and persistence.
+    """
+    labels = labels.clone()
+    labels[:, [0, -1], :] = IGNORE_INDEX
+    labels[:, :, [0, -1]] = IGNORE_INDEX
+    return labels
