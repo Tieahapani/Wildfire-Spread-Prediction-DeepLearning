@@ -141,6 +141,25 @@ bin/wf python scripts/train/compare_arms.py --arms loss-wbce \
 
 Early stopping ended the MLP runs after 29–35 epochs, with the best epoch between 13 and 19. The comparison with persistence and the paired tests are in [`evaluation.md`](evaluation.md).
 
+### Final logistic regression
+
+Logistic regression (`configs/model/logreg.yaml`, 118 parameters) is one 3 × 3 convolution with a single output: a linear model on each pixel and its 8 neighbors, as in Huot et al. 2022. It trains with the same settings as the MLP and U-Net.
+
+```bash
+bin/wf python scripts/train/compare_arms.py --arms loss-wbce \
+    --model configs/model/logreg.yaml --out "$WF_RUNS/final-logreg"
+```
+
+**Result (Nov 24, seeds 0, 1, 2, best validation epoch, mean ± standard deviation):**
+
+| Model | `val/all/pr_auc` | `val/all/f1` | `val/spread/pr_auc` | `val/spread/f1` |
+|---|---|---|---|---|
+| Logistic regression | 0.114 ± 0.000 | 0.271 ± 0.001 | 0.066 ± 0.000 | 0.192 ± 0.000 |
+
+The best epochs were 44, 58 and 83. Seed 0 ran all 100 epochs: its best validation PR-AUC was 0.1132 by epoch 50 and 0.1140 at the end, so the extra 50 epochs added less than 0.001.
+
+Our setup differs from Huot et al. 2022: they trained scikit-learn's logistic regression on a training set balanced to 1:1, weighted the "no fire" class by W = 7 chosen on validation, and excluded the 1-pixel tile border. We train on all pixels with the fire class weighted 3, like every other model here. `final_eval.py --exclude-border` scores without the border for the comparison with their 0.198.
+
 ## Sanity checks
 
 Run these on a few real batches before any search; they live in `wfspread.train.sanity`.

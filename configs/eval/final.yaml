@@ -1,9 +1,15 @@
 # Models in the final evaluation (scripts/eval/final_eval.py). Model configs are
-# relative to this file; runs are folders under $WF_RUNS, one per seed. Logistic
-# regression is added here once its final runs exist.
+# relative to this file; runs are folders under $WF_RUNS, one per seed.
 models:
   persistence:
     kind: persistence
+  logreg:
+    # Logistic regression on each pixel's 3x3 neighborhood, same training settings.
+    model: ../model/logreg.yaml
+    runs:
+      - final-logreg/20261124-1601_logreg_loss-wbce-s0
+      - final-logreg/20261124-1607_logreg_loss-wbce-s1
+      - final-logreg/20261124-1612_logreg_loss-wbce-s2
   mlp:
     # 3x3 MLP, same training settings as the U-Net, not tuned.
     model: ../model/mlp.yaml
@@ -38,6 +44,7 @@ models:
 comparisons:
   - [unet-small, mlp]
   - [unet-small, persistence]
-  - [mlp, persistence]
+  - [mlp, logreg]
+  - [logreg, persistence]
   - [unet-tuned, unet-small]
   - [unet-tuned, unet-tuned-no-prev-fire]
