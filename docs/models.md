@@ -10,6 +10,7 @@ model = load_model("configs/model/unet.yaml")
 
 | Name | Code | Config | Parameters |
 |---|---|---|---|
+| `logreg` | `src/wfspread/models/logreg.py` | `configs/model/logreg.yaml` | 118 |
 | `mlp` | `src/wfspread/models/mlp.py` | `configs/model/mlp.yaml` | 48K |
 | `unet` | `src/wfspread/models/unet.py` | `configs/model/unet.yaml` | 1.93M |
 
