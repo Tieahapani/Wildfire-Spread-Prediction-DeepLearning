@@ -36,7 +36,32 @@ On validation (Nov 24) the border changes almost nothing: logistic regression 0.
 | Persistence | 0.061 | 0.262 / 0.187 | 0.115; 0.357 / 0.273 |
 | Logistic regression | 0.115 ± 0.000 | 0.227 / 0.341 (mean of 3 runs) | 0.198; 0.325 / 0.353 |
 
-Persistence has no training, so its gap comes from the data, not the model: the split (our validation vs their test) or the cleaning. Our persistence on test, scored once at the freeze, will show which. Logistic regression also differs in training (all pixels with fire weighted 3, against their 1:1 balanced set with "no fire" weighted by W = 7).
+Persistence has no training, so its gap had to come from the data. The test run settles it: on test, persistence scores precision 0.357 and recall 0.273, exactly Huot's 35.7% and 27.3%, so our cleaning matches theirs and the gap was the split. Validation is simply a harder split for these baselines. Logistic regression on test is 0.204 ± 0.001 without the border (Huot: 0.198), and persistence 0.108 (Huot: 0.115; the PR-AUC calculation for yes/no predictions is not stated in their paper).
+
+## Test results (Nov 25, scored once)
+
+The test split (1,689 tiles) was cleaned with the training statistics and scored once with `--final-test`, at thresholds chosen on validation. Outputs are in `$WF_RUNS/final-eval/test/` and `test-no-border/`.
+
+| Model | PR-AUC (95% CI) | F1 | IoU | Spread PR-AUC |
+|---|---|---|---|---|
+| Persistence | 0.107 (0.097–0.117) | 0.309 | 0.183 | 0.009 |
+| Logistic regression | 0.202 ± 0.001 (0.186–0.220) | 0.334 ± 0.002 | 0.201 ± 0.001 | 0.090 ± 0.000 |
+| MLP 3 × 3 | 0.232 ± 0.003 (0.217–0.249) | 0.346 ± 0.002 | 0.209 ± 0.001 | 0.104 ± 0.001 |
+| **U-Net (final)** | **0.351 ± 0.004** (0.336–0.367) | 0.406 ± 0.007 | 0.255 ± 0.006 | 0.255 ± 0.011 |
+| U-Net, tuned | 0.355 ± 0.008 (0.341–0.372) | 0.401 ± 0.009 | 0.251 ± 0.007 | 0.263 ± 0.009 |
+| U-Net, tuned, no today's fire mask | 0.209 ± 0.008 (0.200–0.218) | 0.273 ± 0.015 | 0.158 ± 0.010 | 0.174 ± 0.008 |
+
+Paired differences in PR-AUC, first model minus second, with 95% tile-bootstrap intervals:
+
+| Comparison | All pixels | Spread region |
+|---|---|---|
+| U-Net − MLP | +0.118 (+0.108 to +0.129) | +0.151 (+0.140 to +0.163) |
+| MLP − logistic regression | +0.030 (+0.023 to +0.037) | +0.014 (+0.011 to +0.017) |
+| Logistic regression − persistence | +0.096 (+0.088 to +0.104) | +0.081 (+0.075 to +0.087) |
+| Tuned U-Net − U-Net | +0.005 (+0.001 to +0.008) | +0.008 (+0.004 to +0.013) |
+| Tuned U-Net − same without today's fire mask | +0.147 (+0.132 to +0.162) | +0.089 (+0.077 to +0.103) |
+
+Each step up in spatial context helps on test too. The tuned U-Net is slightly but measurably better on test (+0.005), unlike on validation (+0.002, interval including 0). The final model was chosen on validation before the test run and stays the small U-Net; the tuned result is reported as a small gain for 4.7 times the parameters.
 
 ## Running
 
