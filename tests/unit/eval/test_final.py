@@ -8,6 +8,7 @@ from wfspread.eval.final import (
     best_checkpoint,
     build_scored_model,
     collect,
+    pick_tiles,
     read_manifest,
     seed_mean_pr_auc,
     validation_thresholds,
@@ -109,3 +110,18 @@ def test_without_border_marks_only_the_edge_unknown():
     assert (out[:, :, -1] == IGNORE_INDEX).all()
     assert int((out == IGNORE_INDEX).sum()) == 2 * 16
     assert (labels == 1).all()
+
+
+def test_pick_tiles_draws_only_tiles_with_enough_fire_and_is_repeatable():
+    labels = torch.zeros(10, 4, 4, dtype=torch.int8)
+    labels[[1, 3, 5, 7], :2, :2] = 1
+    labels[2, 0, 0] = 1
+    picked = pick_tiles(labels, n=3, min_fire=4, seed=0)
+    assert set(picked) <= {1, 3, 5, 7}
+    assert len(picked) == 3
+    assert picked == pick_tiles(labels, n=3, min_fire=4, seed=0)
+
+
+def test_pick_tiles_needs_enough_eligible_tiles():
+    with pytest.raises(ValueError, match="only 0 tiles"):
+        pick_tiles(torch.zeros(2, 4, 4, dtype=torch.int8), n=1, min_fire=1)
