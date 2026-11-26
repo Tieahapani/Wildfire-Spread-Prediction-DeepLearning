@@ -92,6 +92,8 @@ bin/wf python scripts/eval/report_figures.py --split test
 
 Curves are drawn as steps, matching how PR-AUC is computed; joining persistence's single operating point to the corners with straight lines would overstate it. On test, logistic regression and the MLP lose most of their precision at about recall 0.47. That is the share of tomorrow's fire within one pixel of today's fire (47.3%; 27.3% is fire that is already burning). A 3 × 3 model cannot see fire farther away, so beyond that recall it has little to go on, while the U-Net keeps finding fire that spreads farther (58.1% of tomorrow's fire is within two pixels, 64.6% within three).
 
+`scripts/eval/training_curves.py` draws training loss, validation loss and validation PR-AUC per epoch for every seed of logistic regression, the MLP and the U-Net, with median epoch time and peak GPU memory, from the runs' `logs/metrics.csv`. It saves `training-curves.png` in the same folder.
+
 ## Adding a model
 
 Add an entry under `models` with its model config and one run folder per seed, relative to `$WF_RUNS`. An ablation that hides input channels lists them in `drop_channels`; the model is then built with fewer input channels and wrapped in `wfspread.models.wrappers.ChannelSubset`, matching how it was trained. A model that is not a trained network needs its own `kind`.
