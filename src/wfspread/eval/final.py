@@ -225,3 +225,21 @@ def without_border(labels: Tensor) -> Tensor:
     labels[:, [0, -1], :] = IGNORE_INDEX
     labels[:, :, [0, -1]] = IGNORE_INDEX
     return labels
+
+
+def pick_tiles(labels: Tensor, n: int, min_fire: int, seed: int = 0) -> list[int]:
+    """Random tiles with at least `min_fire` fire pixels tomorrow, for example maps.
+
+    A fixed random draw, rather than choosing by eye, keeps the figures from
+    showing only the tiles where a model looks good.
+
+    Raises:
+        ValueError: If fewer than `n` tiles qualify.
+    """
+    fire = (labels == FIRE).flatten(1).sum(1)
+    eligible = torch.nonzero(fire >= min_fire).flatten()
+    if len(eligible) < n:
+        raise ValueError(f"only {len(eligible)} tiles have >= {min_fire} fire pixels")
+    generator = torch.Generator().manual_seed(seed)
+    chosen = eligible.cpu()[torch.randperm(len(eligible), generator=generator)[:n]]
+    return sorted(chosen.tolist())
